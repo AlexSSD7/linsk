@@ -3,6 +3,8 @@ package cmd
 import (
 	"os"
 
+	"log/slog"
+
 	"github.com/spf13/cobra"
 )
 
@@ -21,5 +23,8 @@ func Execute() {
 }
 
 func init() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+
 	rootCmd.AddCommand(lsCmd)
+	rootCmd.AddCommand(runCmd)
 }

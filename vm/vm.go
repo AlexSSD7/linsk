@@ -15,8 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"log/slog"
+
 	"github.com/alessio/shellescape"
-	"github.com/inconshreveable/log15"
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
@@ -29,7 +30,7 @@ type USBDevicePassthroughConfig struct {
 }
 
 type Instance struct {
-	logger log15.Logger
+	logger *slog.Logger
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -53,7 +54,7 @@ type Instance struct {
 	canceled uint32
 }
 
-func NewInstance(logger log15.Logger, alpineImagePath string, usbDevices []USBDevicePassthroughConfig, debug bool) (*Instance, error) {
+func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDevicePassthroughConfig, debug bool) (*Instance, error) {
 	alpineImagePath = filepath.Clean(alpineImagePath)
 	_, err := os.Stat(alpineImagePath)
 	if err != nil {
@@ -157,6 +158,8 @@ func (vi *Instance) Run() error {
 			return
 		}
 
+		vi.logger.Info("Setting the VM up")
+
 		sshSigner, err := vi.sshSetup()
 		if err != nil {
 			globalErrFn(errors.Wrap(err, "set up ssh"))
@@ -192,7 +195,7 @@ func (vi *Instance) Run() error {
 		// This is to notify everyone waiting for SSH to be up that it's ready to go.
 		close(vi.sshReadyCh)
 
-		vi.logger.Info("SSH up, the VM ready for work")
+		vi.logger.Info("The VM is ready")
 	}()
 
 	_, err = vi.cmd.Process.Wait()
@@ -209,8 +212,11 @@ func (vi *Instance) Run() error {
 	combinedErr := multierr.Combine(
 		append(globalErrs, errors.Wrap(cancelErr, "cancel on exit"))...,
 	)
+	if combinedErr != nil {
+		return fmt.Errorf("%w %v", combinedErr, getLogErrMsg(vi.stderrBuf.String()))
+	}
 
-	return fmt.Errorf("%w %v", combinedErr, getLogErrMsg(vi.stderrBuf.String()))
+	return nil
 }
 
 func (vi *Instance) Cancel() error {
