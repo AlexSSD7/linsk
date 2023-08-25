@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"log/slog"
@@ -97,6 +98,11 @@ func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDe
 	cmd.Stdout = sysWrite
 	stderrBuf := bytes.NewBuffer(nil)
 	cmd.Stderr = stderrBuf
+
+	// This is to prevent Ctrl+C propagating to the child process.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 
 	userReader := bufio.NewReader(userRead)
 
@@ -224,9 +230,34 @@ func (vi *Instance) Cancel() error {
 		return nil
 	}
 
+	vi.logger.Warn("Canceling the VM context")
+
+	var gracefulOK bool
+
+	sc, err := vi.DialSSH()
+	if err != nil {
+		if !errors.Is(err, ErrSSHUnavailable) {
+			vi.logger.Warn("Failed to dial VM ssh to do graceful shutdown", "error", err)
+		}
+	} else {
+		_, err = runSSHCmd(sc, "poweroff")
+		_ = sc.Close()
+		if err != nil {
+			vi.logger.Warn("Could not power off the VM safely", "error", err)
+		} else {
+			vi.logger.Info("Shutting the VM down safely")
+		}
+	}
+
+	var interruptErr error
+
+	if !gracefulOK {
+		interruptErr = vi.cmd.Process.Signal(os.Interrupt)
+	}
+
 	vi.ctxCancel()
 	return multierr.Combine(
-		errors.Wrap(vi.cmd.Process.Signal(os.Interrupt), "cancel cmd"),
+		errors.Wrap(interruptErr, "interrupt cmd"),
 		errors.Wrap(vi.serialRead.Close(), "close serial read pipe"),
 		errors.Wrap(vi.serialWrite.Close(), "close serial write pipe"),
 	)

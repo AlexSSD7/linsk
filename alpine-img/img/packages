@@ -1,3 +1,4 @@
 openssh
 lvm2
 util-linux
+cryptsetup

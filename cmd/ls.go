@@ -21,7 +21,7 @@ var lsCmd = &cobra.Command{
 		runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) {
 			lsblkOut, err := fm.Lsblk()
 			if err != nil {
-				slog.Error("Failed to list block devices in the VM", "error", err.Error())
+				slog.Error("Failed to list block devices in the VM", "error", err)
 				os.Exit(1)
 			}
 
@@ -35,7 +35,7 @@ var lsCmd = &cobra.Command{
 func getDevicePassthroughConfig(val string) vm.USBDevicePassthroughConfig {
 	valSplit := strings.Split(val, ":")
 	if want, have := 2, len(valSplit); want != have {
-		slog.Error("Bad device passthrough syntax", "error", fmt.Errorf("wrong items split by ':' count: want %v, have %v", want, have).Error())
+		slog.Error("Bad device passthrough syntax", "error", fmt.Errorf("wrong items split by ':' count: want %v, have %v", want, have))
 		os.Exit(1)
 	}
 
@@ -43,7 +43,7 @@ func getDevicePassthroughConfig(val string) vm.USBDevicePassthroughConfig {
 	case "usb":
 		usbValsSplit := strings.Split(valSplit[1], ",")
 		if want, have := 2, len(usbValsSplit); want != have {
-			slog.Error("Bad USB device passthrough syntax", "error", fmt.Errorf("wrong args split by ',' count: want %v, have %v", want, have).Error())
+			slog.Error("Bad USB device passthrough syntax", "error", fmt.Errorf("wrong args split by ',' count: want %v, have %v", want, have))
 			os.Exit(1)
 		}
 

@@ -18,8 +18,13 @@ var runCmd = &cobra.Command{
 		vmMountDevName := args[1]
 		fsType := args[2]
 
+		// TODO: `slog` library prints entire stack traces for errors which makes reading errors challenging.
+
 		runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) {
-			err := fm.Mount(vmMountDevName, vm.MountOptions{FSType: fsType})
+			err := fm.Mount(vmMountDevName, vm.MountOptions{
+				FSType: fsType,
+				LUKS:   luksFlag,
+			})
 			if err != nil {
 				slog.Error("Failed to mount the disk inside the VM", "error", err)
 				return
@@ -31,4 +36,10 @@ var runCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+var luksFlag bool
+
+func init() {
+	runCmd.Flags().BoolVarP(&luksFlag, "luks", "l", false, "Use cryptsetup to open a LUKS volume (password will be prompted)")
 }

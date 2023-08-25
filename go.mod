@@ -9,6 +9,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/crypto v0.12.0
+	golang.org/x/term v0.11.0
 )
 
 require (
