@@ -155,6 +155,8 @@ func runSSHCmd(c *ssh.Client, cmd string) ([]byte, error) {
 		return nil, errors.Wrap(err, "create new vm ssh session")
 	}
 
+	// TODO: Timeouts
+
 	defer func() { _ = sess.Close() }()
 
 	stdout := bytes.NewBuffer(nil)

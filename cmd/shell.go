@@ -103,7 +103,7 @@ var shellCmd = &cobra.Command{
 			}
 
 			return 0
-		}))
+		}, nil))
 
 		return nil
 	},

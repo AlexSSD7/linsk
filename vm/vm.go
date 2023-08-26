@@ -19,6 +19,7 @@ import (
 	"log/slog"
 
 	"github.com/alessio/shellescape"
+	"github.com/bramvdbogaerde/go-scp"
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
@@ -328,6 +329,20 @@ func (vi *Instance) DialSSH() (*ssh.Client, error) {
 	}
 
 	return ssh.Dial("tcp", "localhost:"+fmt.Sprint(vi.sshMappedPort), vi.sshConf)
+}
+
+func (vi *Instance) DialSCP() (*scp.Client, error) {
+	if vi.sshConf == nil {
+		return nil, ErrSSHUnavailable
+	}
+
+	sc := scp.NewClient("localhost:"+fmt.Sprint(vi.sshMappedPort), vi.sshConf)
+	err := sc.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	return &sc, nil
 }
 
 func (vi *Instance) SSHUpNotifyChan() chan struct{} {

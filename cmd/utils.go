@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"os/user"
@@ -36,7 +38,7 @@ func doRootCheck() {
 	}
 }
 
-func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.FileManager) int) int {
+func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.FileManager) int, forwardPorts []vm.PortForwardingConfig) int {
 	doRootCheck()
 
 	var passthroughConfig []vm.USBDevicePassthroughConfig
@@ -48,6 +50,10 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 	var forwardPortsConfig []vm.PortForwardingConfig
 
 	for i, fp := range strings.Split(forwardPortsFlagStr, ",") {
+		if fp == "" {
+			continue
+		}
+
 		fpc, err := vm.ParsePortForwardString(fp)
 		if err != nil {
 			slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err)
@@ -56,6 +62,8 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 
 		forwardPortsConfig = append(forwardPortsConfig, fpc)
 	}
+
+	forwardPortsConfig = append(forwardPortsConfig, forwardPorts...)
 
 	// TODO: Alpine image should be downloaded from somewhere.
 	vi, err := vm.NewInstance(slog.Default().With("caller", "vm"), "alpine-img/alpine.qcow2", passthroughConfig, vmDebugFlag, forwardPortsConfig)
@@ -143,4 +151,31 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 			return exitCode
 		}
 	}
+}
+
+func getClosestAvailPort(port uint16) (uint16, error) {
+	for i := port; i < 65535; i++ {
+		ln, err := net.Listen("tcp", ":"+fmt.Sprint(i))
+		if err != nil {
+			if opErr, ok := err.(*net.OpError); ok {
+				if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
+					if sysErr.Err == syscall.EADDRINUSE {
+						// The port is in use.
+						continue
+					}
+				}
+			}
+
+			return 0, errors.Wrapf(err, "net listen (port %v)", port)
+		}
+
+		err = ln.Close()
+		if err != nil {
+			return 0, errors.Wrap(err, "close ephemeral listener")
+		}
+
+		return i, nil
+	}
+
+	return 0, fmt.Errorf("no available port found")
 }

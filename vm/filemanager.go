@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -198,6 +199,87 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	_, err = runSSHCmd(sc, "mount -t "+shellescape.Quote(mo.FSType)+" "+shellescape.Quote(fullDevPath)+" /mnt")
 	if err != nil {
 		return errors.Wrap(err, "run mount cmd")
+	}
+
+	return nil
+}
+
+func (fm *FileManager) StartSMB(pwd []byte) error {
+	scpClient, err := fm.vi.DialSCP()
+	if err != nil {
+		return errors.Wrap(err, "dial scp")
+	}
+
+	defer scpClient.Close()
+
+	sambaCfg := `[global]
+workgroup = WORKGROUP
+dos charset = cp866
+unix charset = utf-8
+	
+[linsk]
+browseable = yes
+writeable = yes
+path = /mnt
+force user = linsk
+force group = linsk
+create mask = 0664`
+
+	err = scpClient.CopyFile(fm.vi.ctx, strings.NewReader(sambaCfg), "/etc/samba/smb.conf", "0400")
+	if err != nil {
+		return errors.Wrap(err, "copy samba config file")
+	}
+
+	scpClient.Close()
+
+	sc, err := fm.vi.DialSSH()
+	if err != nil {
+		return errors.Wrap(err, "dial ssh")
+	}
+
+	defer func() { _ = sc.Close() }()
+
+	_, err = runSSHCmd(sc, "rc-update add samba && rc-service samba start")
+	if err != nil {
+		return errors.Wrap(err, "add and start samba service")
+	}
+
+	sess, err := sc.NewSession()
+	if err != nil {
+		return errors.Wrap(err, "create new ssh session")
+	}
+
+	pwd = append(pwd, '\n')
+
+	stderr := bytes.NewBuffer(nil)
+	sess.Stderr = stderr
+
+	stdinPipe, err := sess.StdinPipe()
+	if err != nil {
+		return errors.Wrap(err, "stdin pipe")
+	}
+
+	// TODO: Timeout for this command
+
+	err = sess.Start("smbpasswd -a linsk")
+	if err != nil {
+		return errors.Wrap(err, "start change samba password cmd")
+	}
+
+	go func() {
+		_, err = stdinPipe.Write(pwd)
+		if err != nil {
+			fm.vi.logger.Error("Failed to write SMB password to smbpasswd stdin", "error", err)
+		}
+		_, err = stdinPipe.Write(pwd)
+		if err != nil {
+			fm.vi.logger.Error("Failed to write repeated SMB password to smbpasswd stdin", "error", err)
+		}
+	}()
+
+	err = sess.Wait()
+	if err != nil {
+		return wrapErrWithLog(err, "wait for change samba password cmd", stderr.String())
 	}
 
 	return nil
