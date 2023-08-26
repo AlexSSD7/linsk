@@ -9,7 +9,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "vldisk",
+	Use: "linsk",
 	// TODO: Fill this
 	// Short:        "",
 	// Long:         ``,

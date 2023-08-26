@@ -10,7 +10,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/AlexSSD7/vldisk/utils"
+	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"

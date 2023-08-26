@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/AlexSSD7/vldisk/vm"
+	"github.com/AlexSSD7/linsk/vm"
 	"github.com/spf13/cobra"
 )
 

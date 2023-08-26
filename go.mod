@@ -1,4 +1,4 @@
-module github.com/AlexSSD7/vldisk
+module github.com/AlexSSD7/linsk
 
 go 1.21
 

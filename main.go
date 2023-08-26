@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/AlexSSD7/vldisk/cmd"
+	"github.com/AlexSSD7/linsk/cmd"
 )
 
 func main() {

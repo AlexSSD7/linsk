@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/AlexSSD7/vldisk/utils"
+	"github.com/AlexSSD7/linsk/utils"
 	"github.com/pkg/errors"
 )
 
