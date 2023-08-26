@@ -27,7 +27,7 @@ var lsCmd = &cobra.Command{
 
 			fmt.Print(string(lsblkOut))
 			return 0
-		}, nil))
+		}, nil, false))
 
 		return nil
 	},

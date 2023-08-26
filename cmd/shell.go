@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/spf13/cobra"
@@ -20,6 +21,22 @@ var shellCmd = &cobra.Command{
 		var passthroughArg string
 		if len(args) > 0 {
 			passthroughArg = args[0]
+		}
+
+		var forwardPortsConfig []vm.PortForwardingConfig
+
+		for i, fp := range strings.Split(forwardPortsFlagStr, ",") {
+			if fp == "" {
+				continue
+			}
+
+			fpc, err := vm.ParsePortForwardString(fp)
+			if err != nil {
+				slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err)
+				os.Exit(1)
+			}
+
+			forwardPortsConfig = append(forwardPortsConfig, fpc)
 		}
 
 		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) int {
@@ -103,14 +120,16 @@ var shellCmd = &cobra.Command{
 			}
 
 			return 0
-		}, nil))
+		}, forwardPortsConfig, unrestrictedNetworkingFlag))
 
 		return nil
 	},
 }
 
 var forwardPortsFlagStr string
+var unrestrictedNetworkingFlag bool
 
 func init() {
+	shellCmd.Flags().BoolVar(&unrestrictedNetworkingFlag, "unsafe-unrestricted-networking", false, "(UNSAFE) Enable unrestricted networking. This will allow the VM to connect to the internet.")
 	shellCmd.Flags().StringVar(&forwardPortsFlagStr, "forward-ports", "", "Extra TCP port forwarding rules. Syntax: '<HOST PORT>:<VM PORT>' OR '<HOST BIND IP>:<HOST PORT>:<VM PORT>'. Multiple rules split by comma are accepted.")
 }

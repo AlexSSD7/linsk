@@ -63,7 +63,7 @@ var runCmd = &cobra.Command{
 			HostIP:   net.ParseIP("127.0.0.1"), // TODO: Make this changeable.
 			HostPort: networkSharePort,
 			VMPort:   445,
-		}}))
+		}}, false))
 
 		return nil
 	},

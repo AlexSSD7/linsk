@@ -51,7 +51,7 @@ type Instance struct {
 	canceled uint32
 }
 
-func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDevicePassthroughConfig, debug bool, extraPortForwardings []PortForwardingConfig) (*Instance, error) {
+func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDevicePassthroughConfig, debug bool, extraPortForwardings []PortForwardingConfig, unrestrictedNetworking bool) (*Instance, error) {
 	alpineImagePath = filepath.Clean(alpineImagePath)
 	_, err := os.Stat(alpineImagePath)
 	if err != nil {
@@ -63,14 +63,18 @@ func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDe
 		return nil, errors.Wrap(err, "get free port for ssh server")
 	}
 
-	// TODO: Disable internet access
-
 	// TODO: Configurable memory allocation
 
 	baseCmd := "qemu-system-x86_64"
 	cmdArgs := []string{"-serial", "stdio", "-enable-kvm", "-m", "2048", "-smp", fmt.Sprint(runtime.NumCPU())}
 
 	netdevOpts := "user,id=net0,hostfwd=tcp:127.0.0.1:" + fmt.Sprint(sshPort) + "-:22"
+
+	if !unrestrictedNetworking {
+		netdevOpts += ",restrict=on"
+	} else {
+		logger.Warn("Running with unsafe unrestricted networking")
+	}
 
 	for _, pf := range extraPortForwardings {
 		hostIPStr := ""
