@@ -108,3 +108,9 @@ var shellCmd = &cobra.Command{
 		return nil
 	},
 }
+
+var forwardPortsFlagStr string
+
+func init() {
+	shellCmd.Flags().StringVar(&forwardPortsFlagStr, "forward-ports", "", "Extra TCP port forwarding rules. Syntax: '<HOST PORT>:<VM PORT>' OR '<HOST BIND IP>:<HOST PORT>:<VM PORT>'. Multiple rules split by comma are accepted.")
+}

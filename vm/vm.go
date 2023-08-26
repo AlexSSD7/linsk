@@ -25,11 +25,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type USBDevicePassthroughConfig struct {
-	HostBus  uint8
-	HostPort uint8
-}
-
 type Instance struct {
 	logger *slog.Logger
 
@@ -55,7 +50,7 @@ type Instance struct {
 	canceled uint32
 }
 
-func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDevicePassthroughConfig, debug bool) (*Instance, error) {
+func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDevicePassthroughConfig, debug bool, extraPortForwardings []PortForwardingConfig) (*Instance, error) {
 	alpineImagePath = filepath.Clean(alpineImagePath)
 	_, err := os.Stat(alpineImagePath)
 	if err != nil {
@@ -72,8 +67,20 @@ func NewInstance(logger *slog.Logger, alpineImagePath string, usbDevices []USBDe
 	// TODO: Configurable memory allocation
 
 	baseCmd := "qemu-system-x86_64"
-	cmdArgs := []string{"-serial", "stdio", "-enable-kvm", "-m", "2048", "-smp", fmt.Sprint(runtime.NumCPU()),
-		"-device", "e1000,netdev=net0", "-netdev", "user,id=net0,hostfwd=tcp::" + fmt.Sprint(sshPort) + "-:22"}
+	cmdArgs := []string{"-serial", "stdio", "-enable-kvm", "-m", "2048", "-smp", fmt.Sprint(runtime.NumCPU())}
+
+	netdevOpts := "user,id=net0,hostfwd=tcp:127.0.0.1:" + fmt.Sprint(sshPort) + "-:22"
+
+	for _, pf := range extraPortForwardings {
+		hostIPStr := ""
+		if pf.HostIP != nil {
+			hostIPStr = pf.HostIP.String()
+		}
+
+		netdevOpts += ",hostfwd=tcp:" + hostIPStr + ":" + fmt.Sprint(pf.HostPort) + "-:" + fmt.Sprint(pf.VMPort)
+	}
+
+	cmdArgs = append(cmdArgs, "-device", "e1000,netdev=net0", "-netdev", netdevOpts)
 
 	cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(alpineImagePath)+",format=qcow2,if=virtio", "-snapshot")
 

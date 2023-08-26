@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -44,8 +45,20 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 		passthroughConfig = []vm.USBDevicePassthroughConfig{getDevicePassthroughConfig(passthroughArg)}
 	}
 
+	var forwardPortsConfig []vm.PortForwardingConfig
+
+	for i, fp := range strings.Split(forwardPortsFlagStr, ",") {
+		fpc, err := vm.ParsePortForwardString(fp)
+		if err != nil {
+			slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err)
+			os.Exit(1)
+		}
+
+		forwardPortsConfig = append(forwardPortsConfig, fpc)
+	}
+
 	// TODO: Alpine image should be downloaded from somewhere.
-	vi, err := vm.NewInstance(slog.Default().With("caller", "vm"), "alpine-img/alpine.qcow2", passthroughConfig, vmDebugFlag)
+	vi, err := vm.NewInstance(slog.Default().With("caller", "vm"), "alpine-img/alpine.qcow2", passthroughConfig, vmDebugFlag, forwardPortsConfig)
 	if err != nil {
 		slog.Error("Failed to create vm instance", "error", err)
 		os.Exit(1)

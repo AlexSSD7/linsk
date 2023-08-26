@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -98,7 +99,7 @@ func (vi *Instance) sshSetup() (ssh.Signer, error) {
 		return nil, errors.Wrap(err, "generate ssh key")
 	}
 
-	cmd := `set -ex; do_setup () { sh -c "set -ex; ifconfig eth0 up; ifconfig lo up; udhcpc; mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; service sshd start"; echo "SERIAL STATUS: $?"; }; do_setup` + "\n"
+	cmd := `set -ex; do_setup () { sh -c "set -ex; ifconfig eth0 up; ifconfig lo up; udhcpc; mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
 
 	err = vi.writeSerial([]byte(cmd))
 	if err != nil {
@@ -124,6 +125,7 @@ func (vi *Instance) sshSetup() (ssh.Signer, error) {
 				}
 
 				if data[len(prefix)] != '0' {
+					fmt.Fprintf(os.Stderr, "SSH SETUP FAILURE:\n%v", stdOutErrBuf.String())
 					return nil, fmt.Errorf("non-zero setup command status code: '%v' %v", string(data[len(prefix)]), getLogErrMsg(stdOutErrBuf.String()))
 				}
 
