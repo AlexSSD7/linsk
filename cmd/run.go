@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/spf13/cobra"
@@ -20,19 +21,20 @@ var runCmd = &cobra.Command{
 
 		// TODO: `slog` library prints entire stack traces for errors which makes reading errors challenging.
 
-		runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) {
+		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) int {
 			err := fm.Mount(vmMountDevName, vm.MountOptions{
 				FSType: fsType,
 				LUKS:   luksFlag,
 			})
 			if err != nil {
 				slog.Error("Failed to mount the disk inside the VM", "error", err)
-				return
+				return 1
 			}
 
 			fmt.Println("Mounted! Now sleeping")
 			<-ctx.Done()
-		})
+			return 0
+		}))
 
 		return nil
 	},

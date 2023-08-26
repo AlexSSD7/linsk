@@ -18,15 +18,16 @@ var lsCmd = &cobra.Command{
 	// Short: "",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) {
+		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) int {
 			lsblkOut, err := fm.Lsblk()
 			if err != nil {
 				slog.Error("Failed to list block devices in the VM", "error", err)
-				os.Exit(1)
+				return 1
 			}
 
 			fmt.Print(string(lsblkOut))
-		})
+			return 0
+		}))
 
 		return nil
 	},

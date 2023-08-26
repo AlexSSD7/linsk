@@ -22,9 +22,14 @@ func Execute() {
 	}
 }
 
+var vmDebugFlag bool
+
 func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 
 	rootCmd.AddCommand(lsCmd)
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(shellCmd)
+
+	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vmdebug", false, "Enable VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
 }

@@ -35,13 +35,17 @@ func doRootCheck() {
 	}
 }
 
-func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.FileManager)) *vm.Instance {
+func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.FileManager) int) int {
 	doRootCheck()
 
-	passthroughConfig := getDevicePassthroughConfig(passthroughArg)
+	var passthroughConfig []vm.USBDevicePassthroughConfig
+
+	if passthroughArg != "" {
+		passthroughConfig = []vm.USBDevicePassthroughConfig{getDevicePassthroughConfig(passthroughArg)}
+	}
 
 	// TODO: Alpine image should be downloaded from somewhere.
-	vi, err := vm.NewInstance(slog.Default().With("caller", "vm"), "alpine-img/alpine.qcow2", []vm.USBDevicePassthroughConfig{passthroughConfig}, true)
+	vi, err := vm.NewInstance(slog.Default().With("caller", "vm"), "alpine-img/alpine.qcow2", passthroughConfig, vmDebugFlag)
 	if err != nil {
 		slog.Error("Failed to create vm instance", "error", err)
 		os.Exit(1)
@@ -104,7 +108,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 				os.Exit(1)
 			}
 
-			fn(ctx, vi, fm)
+			exitCode := fn(ctx, vi, fm)
 
 			err = vi.Cancel()
 			if err != nil {
@@ -123,7 +127,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 			default:
 			}
 
-			return nil
+			return exitCode
 		}
 	}
 }

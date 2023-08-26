@@ -52,7 +52,7 @@ func ParseSSHKeyScan(knownHosts []byte) (ssh.HostKeyCallback, error) {
 func (vi *Instance) scanSSHIdentity() ([]byte, error) {
 	vi.resetSerialStdout()
 
-	err := vi.writeSerial([]byte(`ssh-keyscan -H localhost; echo "SERIAL STATUS: $?"` + "\n"))
+	err := vi.writeSerial([]byte(`ssh-keyscan -H localhost; echo "SERIAL STATUS: $?"; rm /root/.ash_history` + "\n"))
 	if err != nil {
 		return nil, errors.Wrap(err, "write keyscan command to serial")
 	}
