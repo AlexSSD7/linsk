@@ -121,7 +121,7 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 		case <-vm.ctx.Done():
 			return nil, vm.ctx.Err()
 		case <-time.After(time.Until(deadline)):
-			return nil, fmt.Errorf("setup command timed out %v", getLogErrMsg(stdOutErrBuf.String()))
+			return nil, fmt.Errorf("setup command timed out %v", utils.GetLogErrMsg(stdOutErrBuf.String()))
 		case data := <-vm.serialStdoutCh:
 			prefix := []byte("SERIAL STATUS: ")
 			stdOutErrBuf.WriteString(utils.ClearUnprintableChars(string(data), true))
@@ -132,7 +132,7 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 
 				if data[len(prefix)] != '0' {
 					fmt.Fprintf(os.Stderr, "SSH SETUP FAILURE:\n%v", stdOutErrBuf.String())
-					return nil, fmt.Errorf("non-zero setup command status code: '%v' %v", string(data[len(prefix)]), getLogErrMsg(stdOutErrBuf.String()))
+					return nil, fmt.Errorf("non-zero setup command status code: '%v' %v", string(data[len(prefix)]), utils.GetLogErrMsg(stdOutErrBuf.String()))
 				}
 
 				return sshSigner, nil
@@ -173,7 +173,7 @@ func runSSHCmd(c *ssh.Client, cmd string) ([]byte, error) {
 
 	err = sess.Run(cmd)
 	if err != nil {
-		return nil, wrapErrWithLog(err, "run cmd", stderr.String())
+		return nil, utils.WrapErrWithLog(err, "run cmd", stderr.String())
 	}
 
 	return stdout.Bytes(), nil

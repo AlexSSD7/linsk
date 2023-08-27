@@ -141,7 +141,7 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 
 	err = sess.Wait()
 	if err != nil {
-		return wrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String())
+		return utils.WrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String())
 	}
 
 	lg.Info("LUKS device opened successfully")
@@ -279,7 +279,7 @@ create mask = 0664`
 
 	err = sess.Wait()
 	if err != nil {
-		return wrapErrWithLog(err, "wait for change samba password cmd", stderr.String())
+		return utils.WrapErrWithLog(err, "wait for change samba password cmd", stderr.String())
 	}
 
 	return nil

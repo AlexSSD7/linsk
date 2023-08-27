@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/utils"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/alessio/shellescape"
 	"github.com/pkg/errors"
@@ -176,6 +178,9 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 
 	// TODO: Timeout for this command.
 
+	stderr := bytes.NewBuffer(nil)
+	sess.Stderr = stderr
+
 	defer func() {
 		_ = sess.Close()
 	}()
@@ -191,9 +196,11 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 		cmd += " && mount /dev/vda3 /mnt && chroot /mnt apk add " + strings.Join(pkgsQuoted, " ")
 	}
 
+	cmd += `&& chroot /mnt ash -c 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && addgroup -g 1000 linsk && adduser -G linsk linsk -S -u 1000'`
+
 	err = sess.Run(cmd)
 	if err != nil {
-		return errors.Wrap(err, "run setup cmd")
+		return utils.WrapErrWithLog(err, "run setup cmd", stderr.String())
 	}
 
 	return nil

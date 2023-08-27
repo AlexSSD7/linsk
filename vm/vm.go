@@ -18,6 +18,7 @@ import (
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/bramvdbogaerde/go-scp"
 	"github.com/phayes/freeport"
@@ -59,10 +60,10 @@ type DriveConfig struct {
 
 type VMConfig struct {
 	CdromImagePath string
+	Drives         []DriveConfig
 
 	USBDevices               []USBDevicePassthroughConfig
 	ExtraPortForwardingRules []PortForwardingRule
-	Drives                   []DriveConfig
 
 	// Mostly debug-related options.
 	UnrestrictedNetworking bool
@@ -126,13 +127,15 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 		driveArgs := "file=" + shellescape.Quote(extraDrive.Path) + ",format=qcow2,if=virtio"
 		if extraDrive.SnapshotMode {
-			driveArgs += ",snapshot"
+			driveArgs += ",snapshot=on"
 		}
 
 		cmdArgs = append(cmdArgs, "-drive", driveArgs)
 	}
 
-	if cdromImagePath != "" {
+	// We're not using clean `cdromImagePath` here because it is set to "."
+	// when the original string is empty.
+	if cfg.CdromImagePath != "" {
 		cmdArgs = append(cmdArgs, "-boot", "d", "-cdrom", cdromImagePath)
 	}
 
@@ -264,14 +267,14 @@ func (vm *VM) Run() error {
 			errors.Wrap(cancelErr, "cancel"),
 		)
 
-		return fmt.Errorf("%w %v", combinedErr, getLogErrMsg(vm.stderrBuf.String()))
+		return fmt.Errorf("%w %v", combinedErr, utils.GetLogErrMsg(vm.stderrBuf.String()))
 	}
 
 	combinedErr := multierr.Combine(
 		append(globalErrs, errors.Wrap(cancelErr, "cancel on exit"))...,
 	)
 	if combinedErr != nil {
-		return fmt.Errorf("%w %v", combinedErr, getLogErrMsg(vm.stderrBuf.String()))
+		return fmt.Errorf("%w %v", combinedErr, utils.GetLogErrMsg(vm.stderrBuf.String()))
 	}
 
 	return nil

@@ -47,7 +47,10 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	}
 
 	vmCfg := vm.VMConfig{
-		CdromImagePath: "alpine-img/alpine.qcow2",
+		Drives: []vm.DriveConfig{{
+			Path:         "alpine.qcow2",
+			SnapshotMode: true,
+		}},
 
 		USBDevices:               passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,
@@ -111,6 +114,10 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	for {
 		select {
 		case err := <-runErrCh:
+			if err == nil {
+				err = fmt.Errorf("operation canceled by user")
+			}
+
 			slog.Error("Failed to start the VM", "error", err)
 			os.Exit(1)
 		case <-vi.SSHUpNotifyChan():
