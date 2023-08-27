@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -122,17 +122,18 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	if !cfg.ShowDisplay {
 		cmdArgs = append(cmdArgs, "-display", "none")
-		if runtime.GOARCH == "arm64" {
-			// No video is configured by default in ARM. This will enable it.
-			cmdArgs = append(cmdArgs, "-device", "virtio-gpu-device")
-		}
+
+	} else if runtime.GOARCH == "arm64" {
+		// No video is configured by default in ARM. This will enable it.
+		// TODO: This doesn't really work on arm64. It just shows a blank viewer.
+		cmdArgs = append(cmdArgs, "-device", "virtio-gpu-device")
 	}
 
 	if len(cfg.USBDevices) != 0 {
-		cmdArgs = append(cmdArgs, "-usb", "-device", "nec-usb-xhci,id=xhci")
+		cmdArgs = append(cmdArgs, "-device", "nec-usb-xhci,id=xhci")
 
 		for _, dev := range cfg.USBDevices {
-			cmdArgs = append(cmdArgs, "-device", "usb-host,hostbus="+strconv.FormatUint(uint64(dev.HostBus), 10)+",hostport="+strconv.FormatUint(uint64(dev.HostPort), 10))
+			cmdArgs = append(cmdArgs, "-device", "usb-host,vendorid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.VendorID))+",productid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.ProductID)))
 		}
 	}
 

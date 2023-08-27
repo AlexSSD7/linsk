@@ -46,21 +46,21 @@ func getDevicePassthroughConfig(val string) vm.USBDevicePassthroughConfig {
 			os.Exit(1)
 		}
 
-		usbBus, err := strconv.ParseUint(usbValsSplit[0], 10, 8)
+		vendorID, err := strconv.ParseUint(usbValsSplit[0], 16, 32)
 		if err != nil {
-			slog.Error("Bad USB device bus number", "value", usbValsSplit[0])
+			slog.Error("Bad USB vendor ID", "value", usbValsSplit[0])
 			os.Exit(1)
 		}
 
-		usbPort, err := strconv.ParseUint(usbValsSplit[1], 10, 8)
+		productID, err := strconv.ParseUint(usbValsSplit[1], 16, 32)
 		if err != nil {
-			slog.Error("Bad USB device port number", "value", usbValsSplit[1])
+			slog.Error("Bad USB product ID", "value", usbValsSplit[1])
 			os.Exit(1)
 		}
 
 		return vm.USBDevicePassthroughConfig{
-			HostBus:  uint8(usbBus),
-			HostPort: uint8(usbPort),
+			VendorID:  uint16(vendorID),
+			ProductID: uint16(productID),
 		}
 	default:
 		slog.Error("Unknown device passthrough type", "value", valSplit[0])

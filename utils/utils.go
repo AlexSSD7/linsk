@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/binary"
 	"regexp"
 	"strings"
 	"unicode"
@@ -27,4 +28,10 @@ func ValidateDevName(s string) bool {
 	s = strings.TrimPrefix(s, "mapper/")
 
 	return devNameRegexp.MatchString(s)
+}
+
+func Uint16ToBytesBE(v uint16) []byte {
+	b := make([]byte, 2)
+	binary.BigEndian.PutUint16(b, v)
+	return b
 }

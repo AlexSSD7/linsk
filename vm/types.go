@@ -10,8 +10,8 @@ import (
 )
 
 type USBDevicePassthroughConfig struct {
-	HostBus  uint8
-	HostPort uint8
+	VendorID  uint16
+	ProductID uint16
 }
 
 type PortForwardingRule struct {
