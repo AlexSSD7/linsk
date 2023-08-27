@@ -50,10 +50,10 @@ func ParseSSHKeyScan(knownHosts []byte) (ssh.HostKeyCallback, error) {
 	}, nil
 }
 
-func (vi *Instance) scanSSHIdentity() ([]byte, error) {
-	vi.resetSerialStdout()
+func (vm *VM) scanSSHIdentity() ([]byte, error) {
+	vm.resetSerialStdout()
 
-	err := vi.writeSerial([]byte(`ssh-keyscan -H localhost; echo "SERIAL STATUS: $?"; rm /root/.ash_history` + "\n"))
+	err := vm.writeSerial([]byte(`ssh-keyscan -H localhost; echo "SERIAL STATUS: $?"; rm /root/.ash_history` + "\n"))
 	if err != nil {
 		return nil, errors.Wrap(err, "write keyscan command to serial")
 	}
@@ -64,11 +64,11 @@ func (vi *Instance) scanSSHIdentity() ([]byte, error) {
 
 	for {
 		select {
-		case <-vi.ctx.Done():
-			return nil, vi.ctx.Err()
+		case <-vm.ctx.Done():
+			return nil, vm.ctx.Err()
 		case <-time.After(time.Until(deadline)):
 			return nil, fmt.Errorf("keyscan command timed out")
-		case data := <-vi.serialStdoutCh:
+		case data := <-vm.serialStdoutCh:
 			if len(data) == 0 {
 				continue
 			}
@@ -91,8 +91,8 @@ func (vi *Instance) scanSSHIdentity() ([]byte, error) {
 	}
 }
 
-func (vi *Instance) sshSetup() (ssh.Signer, error) {
-	vi.resetSerialStdout()
+func (vm *VM) sshSetup() (ssh.Signer, error) {
+	vm.resetSerialStdout()
 
 	sshSigner, sshPublicKey, err := generateSSHKey()
 	if err != nil {
@@ -101,7 +101,7 @@ func (vi *Instance) sshSetup() (ssh.Signer, error) {
 
 	cmd := `set -ex; do_setup () { sh -c "set -ex; ifconfig eth0 up; ifconfig lo up; udhcpc; mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
 
-	err = vi.writeSerial([]byte(cmd))
+	err = vm.writeSerial([]byte(cmd))
 	if err != nil {
 		return nil, errors.Wrap(err, "write ssh setup serial command")
 	}
@@ -112,11 +112,11 @@ func (vi *Instance) sshSetup() (ssh.Signer, error) {
 
 	for {
 		select {
-		case <-vi.ctx.Done():
-			return nil, vi.ctx.Err()
+		case <-vm.ctx.Done():
+			return nil, vm.ctx.Err()
 		case <-time.After(time.Until(deadline)):
 			return nil, fmt.Errorf("setup command timed out %v", getLogErrMsg(stdOutErrBuf.String()))
-		case data := <-vi.serialStdoutCh:
+		case data := <-vm.serialStdoutCh:
 			prefix := []byte("SERIAL STATUS: ")
 			stdOutErrBuf.Write(data)
 			if bytes.HasPrefix(data, prefix) {

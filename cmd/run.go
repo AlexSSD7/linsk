@@ -29,7 +29,7 @@ var runCmd = &cobra.Command{
 
 		// TODO: `slog` library prints entire stack traces for errors which makes reading errors challenging.
 
-		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) int {
+		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
 			err := fm.Mount(vmMountDevName, vm.MountOptions{
 				FSType: fsType,
 				LUKS:   luksFlag,
@@ -59,7 +59,7 @@ var runCmd = &cobra.Command{
 
 			<-ctx.Done()
 			return 0
-		}, []vm.PortForwardingConfig{{
+		}, []vm.PortForwardingRule{{
 			HostIP:   net.ParseIP("127.0.0.1"), // TODO: Make this changeable.
 			HostPort: networkSharePort,
 			VMPort:   445,

@@ -22,19 +22,19 @@ import (
 type FileManager struct {
 	logger *slog.Logger
 
-	vi *Instance
+	vm *VM
 }
 
-func NewFileManager(logger *slog.Logger, vi *Instance) *FileManager {
+func NewFileManager(logger *slog.Logger, vm *VM) *FileManager {
 	return &FileManager{
 		logger: logger,
 
-		vi: vi,
+		vm: vm,
 	}
 }
 
 func (fm *FileManager) Init() error {
-	sc, err := fm.vi.DialSSH()
+	sc, err := fm.vm.DialSSH()
 	if err != nil {
 		return errors.Wrap(err, "dial vm ssh")
 	}
@@ -55,7 +55,7 @@ func (fm *FileManager) Init() error {
 }
 
 func (fm *FileManager) Lsblk() ([]byte, error) {
-	sc, err := fm.vi.DialSSH()
+	sc, err := fm.vm.DialSSH()
 	if err != nil {
 		return nil, errors.Wrap(err, "dial vm ssh")
 	}
@@ -180,7 +180,7 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 		return fmt.Errorf("fs type is empty")
 	}
 
-	sc, err := fm.vi.DialSSH()
+	sc, err := fm.vm.DialSSH()
 	if err != nil {
 		return errors.Wrap(err, "dial vm ssh")
 	}
@@ -205,7 +205,7 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 }
 
 func (fm *FileManager) StartSMB(pwd []byte) error {
-	scpClient, err := fm.vi.DialSCP()
+	scpClient, err := fm.vm.DialSCP()
 	if err != nil {
 		return errors.Wrap(err, "dial scp")
 	}
@@ -225,14 +225,14 @@ force user = linsk
 force group = linsk
 create mask = 0664`
 
-	err = scpClient.CopyFile(fm.vi.ctx, strings.NewReader(sambaCfg), "/etc/samba/smb.conf", "0400")
+	err = scpClient.CopyFile(fm.vm.ctx, strings.NewReader(sambaCfg), "/etc/samba/smb.conf", "0400")
 	if err != nil {
 		return errors.Wrap(err, "copy samba config file")
 	}
 
 	scpClient.Close()
 
-	sc, err := fm.vi.DialSSH()
+	sc, err := fm.vm.DialSSH()
 	if err != nil {
 		return errors.Wrap(err, "dial ssh")
 	}
@@ -269,11 +269,11 @@ create mask = 0664`
 	go func() {
 		_, err = stdinPipe.Write(pwd)
 		if err != nil {
-			fm.vi.logger.Error("Failed to write SMB password to smbpasswd stdin", "error", err)
+			fm.vm.logger.Error("Failed to write SMB password to smbpasswd stdin", "error", err)
 		}
 		_, err = stdinPipe.Write(pwd)
 		if err != nil {
-			fm.vi.logger.Error("Failed to write repeated SMB password to smbpasswd stdin", "error", err)
+			fm.vm.logger.Error("Failed to write repeated SMB password to smbpasswd stdin", "error", err)
 		}
 	}()
 

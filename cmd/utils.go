@@ -37,7 +37,7 @@ func doRootCheck() {
 	}
 }
 
-func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.FileManager) int, forwardPorts []vm.PortForwardingConfig, unrestrictedNetworking bool) int {
+func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
 	doRootCheck()
 
 	var passthroughConfig []vm.USBDevicePassthroughConfig
@@ -46,8 +46,18 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.Instance, *vm.Fil
 		passthroughConfig = []vm.USBDevicePassthroughConfig{getDevicePassthroughConfig(passthroughArg)}
 	}
 
+	vmCfg := vm.VMConfig{
+		CdromImagePath: "alpine-img/alpine.qcow2",
+
+		USBDevices:               passthroughConfig,
+		ExtraPortForwardingRules: forwardPortsRules,
+
+		DebugUnrestrictedNetworking: unrestrictedNetworking,
+		DebugShowDisplay:            vmDebugFlag,
+	}
+
 	// TODO: Alpine image should be downloaded from somewhere.
-	vi, err := vm.NewInstance(slog.Default().With("caller", "vm"), "alpine-img/alpine.qcow2", passthroughConfig, vmDebugFlag, forwardPorts, unrestrictedNetworking)
+	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)
 	if err != nil {
 		slog.Error("Failed to create vm instance", "error", err)
 		os.Exit(1)

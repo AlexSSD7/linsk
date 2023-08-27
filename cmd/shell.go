@@ -23,23 +23,23 @@ var shellCmd = &cobra.Command{
 			passthroughArg = args[0]
 		}
 
-		var forwardPortsConfig []vm.PortForwardingConfig
+		var forwardPortRules []vm.PortForwardingRule
 
 		for i, fp := range strings.Split(forwardPortsFlagStr, ",") {
 			if fp == "" {
 				continue
 			}
 
-			fpc, err := vm.ParsePortForwardString(fp)
+			fpr, err := vm.ParsePortForwardString(fp)
 			if err != nil {
 				slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err)
 				os.Exit(1)
 			}
 
-			forwardPortsConfig = append(forwardPortsConfig, fpc)
+			forwardPortRules = append(forwardPortRules, fpr)
 		}
 
-		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.Instance, fm *vm.FileManager) int {
+		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
 			sc, err := i.DialSSH()
 			if err != nil {
 				slog.Error("Failed to dial VM SSH", "error", err)
@@ -120,7 +120,7 @@ var shellCmd = &cobra.Command{
 			}
 
 			return 0
-		}, forwardPortsConfig, unrestrictedNetworkingFlag))
+		}, forwardPortRules, unrestrictedNetworkingFlag))
 
 		return nil
 	},
