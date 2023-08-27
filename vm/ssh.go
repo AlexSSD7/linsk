@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
@@ -99,14 +100,19 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 		return nil, errors.Wrap(err, "generate ssh key")
 	}
 
-	cmd := `set -ex; do_setup () { sh -c "set -ex; ifconfig eth0 up; ifconfig lo up; udhcpc; mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
+	installSSHDCmd := ""
+	if vm.installSSH {
+		installSSHDCmd = "apk add openssh; "
+	}
+
+	cmd := `do_setup () { sh -c "set -ex; setup-alpine -q; ` + installSSHDCmd + `mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
 
 	err = vm.writeSerial([]byte(cmd))
 	if err != nil {
 		return nil, errors.Wrap(err, "write ssh setup serial command")
 	}
 
-	deadline := time.Now().Add(time.Second * 5)
+	deadline := time.Now().Add(time.Second * 30)
 
 	stdOutErrBuf := bytes.NewBuffer(nil)
 
@@ -118,7 +124,7 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 			return nil, fmt.Errorf("setup command timed out %v", getLogErrMsg(stdOutErrBuf.String()))
 		case data := <-vm.serialStdoutCh:
 			prefix := []byte("SERIAL STATUS: ")
-			stdOutErrBuf.Write(data)
+			stdOutErrBuf.WriteString(utils.ClearUnprintableChars(string(data), true))
 			if bytes.HasPrefix(data, prefix) {
 				if len(data) == len(prefix) {
 					return nil, fmt.Errorf("setup command status code did not show up")

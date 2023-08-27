@@ -4,11 +4,16 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/acarl005/stripansi"
 )
 
-func ClearUnprintableChars(s string) string {
+func ClearUnprintableChars(s string, allowNewlines bool) string {
+	// This will remove ANSI color codes.
+	s = stripansi.Strip(s)
+
 	return strings.Map(func(r rune) rune {
-		if unicode.IsPrint(r) {
+		if unicode.IsPrint(r) || (allowNewlines && r == '\n') {
 			return r
 		}
 		return -1

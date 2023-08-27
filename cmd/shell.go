@@ -17,7 +17,7 @@ var shellCmd = &cobra.Command{
 	// TODO: Fill this
 	// Short: "",
 	Args: cobra.RangeArgs(0, 1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		var passthroughArg string
 		if len(args) > 0 {
 			passthroughArg = args[0]
@@ -121,8 +121,6 @@ var shellCmd = &cobra.Command{
 
 			return 0
 		}, forwardPortRules, unrestrictedNetworkingFlag))
-
-		return nil
 	},
 }
 

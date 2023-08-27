@@ -17,7 +17,7 @@ var runCmd = &cobra.Command{
 	// TODO: Fill this
 	// Short: "",
 	Args: cobra.ExactArgs(3),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		vmMountDevName := args[1]
 		fsType := args[2]
 
@@ -64,8 +64,6 @@ var runCmd = &cobra.Command{
 			HostPort: networkSharePort,
 			VMPort:   445,
 		}}, false))
-
-		return nil
 	},
 }
 

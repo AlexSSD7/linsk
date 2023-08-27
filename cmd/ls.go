@@ -17,7 +17,7 @@ var lsCmd = &cobra.Command{
 	// TODO: Fill this
 	// Short: "",
 	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
 			lsblkOut, err := fm.Lsblk()
 			if err != nil {
@@ -28,8 +28,6 @@ var lsCmd = &cobra.Command{
 			fmt.Print(string(lsblkOut))
 			return 0
 		}, nil, false))
-
-		return nil
 	},
 }
 

@@ -52,8 +52,8 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		USBDevices:               passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,
 
-		DebugUnrestrictedNetworking: unrestrictedNetworking,
-		DebugShowDisplay:            vmDebugFlag,
+		UnrestrictedNetworking: unrestrictedNetworking,
+		ShowDisplay:            vmDebugFlag,
 	}
 
 	// TODO: Alpine image should be downloaded from somewhere.

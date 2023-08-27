@@ -37,6 +37,7 @@ type VM struct {
 	sshMappedPort uint16
 	sshConf       *ssh.ClientConfig
 	sshReadyCh    chan struct{}
+	installSSH    bool
 
 	serialRead    *io.PipeReader
 	serialReader  *bufio.Reader
@@ -51,15 +52,22 @@ type VM struct {
 	canceled uint32
 }
 
+type DriveConfig struct {
+	Path         string
+	SnapshotMode bool
+}
+
 type VMConfig struct {
 	CdromImagePath string
 
 	USBDevices               []USBDevicePassthroughConfig
 	ExtraPortForwardingRules []PortForwardingRule
+	Drives                   []DriveConfig
 
-	// Debug-related options.
-	DebugUnrestrictedNetworking bool
-	DebugShowDisplay            bool
+	// Mostly debug-related options.
+	UnrestrictedNetworking bool
+	ShowDisplay            bool
+	InstallBaseUtilities   bool
 }
 
 func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
@@ -81,7 +89,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	netdevOpts := "user,id=net0,hostfwd=tcp:127.0.0.1:" + fmt.Sprint(sshPort) + "-:22"
 
-	if !cfg.DebugUnrestrictedNetworking {
+	if !cfg.UnrestrictedNetworking {
 		netdevOpts += ",restrict=on"
 	} else {
 		logger.Warn("Running with unsafe unrestricted networking")
@@ -98,9 +106,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	cmdArgs = append(cmdArgs, "-device", "e1000,netdev=net0", "-netdev", netdevOpts)
 
-	cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(cdromImagePath)+",format=qcow2,if=virtio", "-snapshot")
-
-	if !cfg.DebugShowDisplay {
+	if !cfg.ShowDisplay {
 		cmdArgs = append(cmdArgs, "-display", "none")
 	}
 
@@ -110,6 +116,28 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		for _, dev := range cfg.USBDevices {
 			cmdArgs = append(cmdArgs, "-device", "usb-host,hostbus="+strconv.FormatUint(uint64(dev.HostBus), 10)+",hostport="+strconv.FormatUint(uint64(dev.HostPort), 10))
 		}
+	}
+
+	for i, extraDrive := range cfg.Drives {
+		_, err = os.Stat(extraDrive.Path)
+		if err != nil {
+			return nil, errors.Wrapf(err, "stat extra drive #%v path", i)
+		}
+
+		driveArgs := "file=" + shellescape.Quote(extraDrive.Path) + ",format=qcow2,if=virtio"
+		if extraDrive.SnapshotMode {
+			driveArgs += ",snapshot"
+		}
+
+		cmdArgs = append(cmdArgs, "-drive", driveArgs)
+	}
+
+	if cdromImagePath != "" {
+		cmdArgs = append(cmdArgs, "-boot", "d", "-cdrom", cdromImagePath)
+	}
+
+	if cfg.InstallBaseUtilities && !cfg.UnrestrictedNetworking {
+		return nil, fmt.Errorf("cannot install base utilities with unrestricted networking disabled")
 	}
 
 	sysRead, userWrite := io.Pipe()
@@ -141,6 +169,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 		sshMappedPort: uint16(sshPort),
 		sshReadyCh:    make(chan struct{}),
+		installSSH:    cfg.InstallBaseUtilities,
 
 		serialRead:   userRead,
 		serialReader: userReader,

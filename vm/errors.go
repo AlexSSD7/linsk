@@ -19,7 +19,7 @@ func wrapErrWithLog(err error, msg, log string) error {
 func getLogErrMsg(s string) string {
 	logToInclude := strings.ReplaceAll(s, "\n", "\\n")
 	logToInclude = strings.TrimSuffix(logToInclude, "\\n")
-	logToInclude = utils.ClearUnprintableChars(logToInclude)
+	logToInclude = utils.ClearUnprintableChars(logToInclude, false)
 
 	origLogLen := len(logToInclude)
 	const maxLogLen = 256
