@@ -85,8 +85,21 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	// TODO: Configurable memory allocation
 
-	baseCmd := "qemu-system-x86_64"
-	cmdArgs := []string{"-serial", "stdio", "-enable-kvm", "-m", "2048", "-smp", fmt.Sprint(runtime.NumCPU())}
+	cmdArgs := []string{"-serial", "stdio", "-m", "2048", "-smp", fmt.Sprint(runtime.NumCPU())}
+
+	baseCmd := "qemu-system"
+
+	switch runtime.GOARCH {
+	case "amd64":
+		cmdArgs = append(cmdArgs, "-accel", "kvm")
+		baseCmd += "-x86_64"
+	case "arm64":
+		// TODO: EFI firmware path is temporary, for dev purposes only.
+		cmdArgs = append(cmdArgs, "-accel", "hvf", "-bios", "/opt/homebrew/Cellar/qemu/8.1.0/share/qemu/edk2-aarch64-code.fd", "-M", "virt,highmem=off", "-cpu", "cortex-a57")
+		baseCmd += "-aarch64"
+	default:
+		return nil, fmt.Errorf("arch '%v' is not supported", runtime.GOARCH)
+	}
 
 	netdevOpts := "user,id=net0,hostfwd=tcp:127.0.0.1:" + fmt.Sprint(sshPort) + "-:22"
 
@@ -109,6 +122,10 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	if !cfg.ShowDisplay {
 		cmdArgs = append(cmdArgs, "-display", "none")
+		if runtime.GOARCH == "arm64" {
+			// No video is configured by default in ARM. This will enable it.
+			cmdArgs = append(cmdArgs, "-device", "virtio-gpu-device")
+		}
 	}
 
 	if len(cfg.USBDevices) != 0 {

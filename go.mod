@@ -6,7 +6,6 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alessio/shellescape v1.4.2
 	github.com/bramvdbogaerde/go-scp v1.2.1
-	github.com/google/uuid v1.3.1
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
