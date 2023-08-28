@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/AlexSSD7/linsk/vm"
@@ -70,7 +71,13 @@ var shellCmd = &cobra.Command{
 				}
 			}()
 
-			termWidth, termHeight, err := term.GetSize(termFD)
+			termFDGetSize := termFD
+			if runtime.GOOS == "windows" {
+				// Another Windows workaround :/
+				termFDGetSize = int(os.Stdout.Fd())
+			}
+
+			termWidth, termHeight, err := term.GetSize(termFDGetSize)
 			if err != nil {
 				slog.Error("Failed to get terminal size", "error", err)
 				return 1

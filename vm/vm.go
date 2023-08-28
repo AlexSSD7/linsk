@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"log/slog"
@@ -91,7 +90,16 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	switch runtime.GOARCH {
 	case "amd64":
-		cmdArgs = append(cmdArgs, "-accel", "kvm")
+		accel := "kvm"
+		if runtime.GOOS == "windows" {
+			// For Windows, we need to install QEMU using an installer and add it to PATH.
+			// Then, we should enable Windows Hypervisor Platform in "Turn Windows features on or off".
+			// IMPORTANT: We should also install libusbK drivers for USB devices we want to pass through.
+			// This can be easily done with a program called Zadiag by Akeo.
+			accel = "whpx,kernel-irqchip=off"
+		}
+
+		cmdArgs = append(cmdArgs, "-accel", accel)
 		baseCmd += "-x86_64"
 	case "arm64":
 		// TODO: EFI firmware path is temporary, for dev purposes only.
@@ -99,6 +107,10 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		baseCmd += "-aarch64"
 	default:
 		return nil, fmt.Errorf("arch '%v' is not supported", runtime.GOARCH)
+	}
+
+	if runtime.GOOS == "windows" {
+		baseCmd += ".exe"
 	}
 
 	netdevOpts := "user,id=net0,hostfwd=tcp:127.0.0.1:" + fmt.Sprint(sshPort) + "-:22"
@@ -130,7 +142,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	}
 
 	if len(cfg.USBDevices) != 0 {
-		cmdArgs = append(cmdArgs, "-device", "nec-usb-xhci,id=xhci")
+		cmdArgs = append(cmdArgs, "-device", "nec-usb-xhci")
 
 		for _, dev := range cfg.USBDevices {
 			cmdArgs = append(cmdArgs, "-device", "usb-host,vendorid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.VendorID))+",productid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.ProductID)))
@@ -171,10 +183,8 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	stderrBuf := bytes.NewBuffer(nil)
 	cmd.Stderr = stderrBuf
 
-	// This is to prevent Ctrl+C propagating to the child process.
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
+	// This function is OS-specific.
+	prepareVMCmd(cmd)
 
 	userReader := bufio.NewReader(userRead)
 
@@ -310,9 +320,10 @@ func (vm *VM) Cancel() error {
 	sc, err := vm.DialSSH()
 	if err != nil {
 		if !errors.Is(err, ErrSSHUnavailable) {
-			vm.logger.Warn("Failed to dial VM ssh to do graceful shutdown", "error", err)
+			vm.logger.Warn("Failed to dial VM SSH to do graceful shutdown", "error", err)
 		}
 	} else {
+		vm.logger.Warn("Sending poweroff command to the VM")
 		_, err = runSSHCmd(sc, "poweroff")
 		_ = sc.Close()
 		if err != nil {
@@ -325,7 +336,11 @@ func (vm *VM) Cancel() error {
 	var interruptErr error
 
 	if !gracefulOK {
-		interruptErr = vm.cmd.Process.Signal(os.Interrupt)
+		if vm.cmd.Process == nil {
+			interruptErr = fmt.Errorf("process is not started")
+		} else {
+			interruptErr = terminateProcess(vm.cmd.Process.Pid)
+		}
 	}
 
 	vm.ctxCancel()
@@ -355,8 +370,18 @@ func (vm *VM) writeSerial(b []byte) error {
 	vm.serialWriteMu.Lock()
 	defer vm.serialWriteMu.Unlock()
 
-	_, err := vm.serialWrite.Write(b)
-	return err
+	// What do you see below is a workaround for the way how serial console
+	// is implemented in QEMU/Windows pair. Apparently they are using polling,
+	// and this will ensure that we do not write faster than the polling rate.
+	for i := range b {
+		_, err := vm.serialWrite.Write([]byte{b[i]})
+		time.Sleep(time.Millisecond * 10)
+		if err != nil {
+			return errors.Wrapf(err, "write char #%v", i)
+		}
+	}
+
+	return nil
 }
 
 func (vm *VM) runVMLoginHandler() error {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -174,7 +173,7 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 		return fmt.Errorf("bad device name")
 	}
 
-	fullDevPath := filepath.Clean("/dev/" + devName)
+	fullDevPath := "/dev/" + devName
 
 	if mo.FSType == "" {
 		return fmt.Errorf("fs type is empty")

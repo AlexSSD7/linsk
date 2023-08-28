@@ -45,6 +45,8 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
+			// TODO: Use FTP instead of SMB
+
 			shareURI := "smb://linsk:" + sharePWD + "@127.0.0.1:" + fmt.Sprint(networkSharePort)
 
 			fmt.Fprintf(os.Stderr, "================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: SMB\nServer Address: smb://127.0.0.1:%v\nUsername: linsk\nPassword: %v\n\nShare URI: %v\n================\n", networkSharePort, sharePWD, shareURI)

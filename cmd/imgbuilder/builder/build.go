@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -69,8 +70,13 @@ func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, sh
 
 func createQEMUImg(outPath string) error {
 	outPath = filepath.Clean(outPath)
+	baseCmd := "qemu-img"
 
-	err := exec.Command("qemu-img", "create", "-f", "qcow2", outPath, "1G").Run()
+	if runtime.GOOS == "windows" {
+		baseCmd += ".exe"
+	}
+
+	err := exec.Command(baseCmd, "create", "-f", "qcow2", outPath, "1G").Run()
 	if err != nil {
 		return errors.Wrap(err, "run qemu-img create cmd")
 	}

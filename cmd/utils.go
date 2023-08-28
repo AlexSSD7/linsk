@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"runtime"
 	"sync"
 	"syscall"
 
@@ -24,7 +25,19 @@ func checkIfRoot() (bool, error) {
 	return currentUser.Username == "root", nil
 }
 
-func doRootCheck() {
+func doUSBRootCheck() {
+	switch runtime.GOOS {
+	case "darwin":
+		// Root privileges is not required in macOS.
+		return
+	case "windows":
+		// Administrator privileges are not required in Windows.
+		return
+	default:
+		// As for everything else, we will likely need root privileges
+		// for the USB passthrough.
+	}
+
 	ok, err := checkIfRoot()
 	if err != nil {
 		slog.Error("Failed to check whether the command is ran by root", "error", err)
@@ -32,18 +45,17 @@ func doRootCheck() {
 	}
 
 	if !ok {
-		slog.Error("You must run this program as root")
+		slog.Error("USB passthrough on your OS requires this program to be ran as root")
 		os.Exit(1)
 	}
 }
 
 func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
-	doRootCheck()
-
 	var passthroughConfig []vm.USBDevicePassthroughConfig
 
 	if passthroughArg != "" {
 		passthroughConfig = []vm.USBDevicePassthroughConfig{getDevicePassthroughConfig(passthroughArg)}
+		doUSBRootCheck()
 	}
 
 	vmCfg := vm.VMConfig{
