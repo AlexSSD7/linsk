@@ -61,6 +61,8 @@ type VMConfig struct {
 	CdromImagePath string
 	Drives         []DriveConfig
 
+	MemoryAlloc uint64 // In KiB.
+
 	USBDevices               []USBDevicePassthroughConfig
 	ExtraPortForwardingRules []PortForwardingRule
 
@@ -84,7 +86,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	// TODO: Configurable memory allocation
 
-	cmdArgs := []string{"-serial", "stdio", "-m", "2048", "-smp", fmt.Sprint(runtime.NumCPU())}
+	cmdArgs := []string{"-serial", "stdio", "-m", fmt.Sprint(cfg.MemoryAlloc), "-smp", fmt.Sprint(runtime.NumCPU())}
 
 	baseCmd := "qemu-system"
 
@@ -319,14 +321,14 @@ func (vm *VM) Cancel() error {
 	sc, err := vm.DialSSH()
 	if err != nil {
 		if !errors.Is(err, ErrSSHUnavailable) {
-			vm.logger.Warn("Failed to dial VM SSH to do graceful shutdown", "error", err)
+			vm.logger.Warn("Failed to dial VM SSH to do graceful shutdown", "error", err.Error())
 		}
 	} else {
 		vm.logger.Warn("Sending poweroff command to the VM")
 		_, err = runSSHCmd(sc, "poweroff")
 		_ = sc.Close()
 		if err != nil {
-			vm.logger.Warn("Could not power off the VM safely", "error", err)
+			vm.logger.Warn("Could not power off the VM safely", "error", err.Error())
 		} else {
 			vm.logger.Info("Shutting the VM down safely")
 		}

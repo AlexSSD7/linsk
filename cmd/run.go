@@ -24,7 +24,7 @@ var runCmd = &cobra.Command{
 
 		networkSharePort, err := getClosestAvailPortWithSubsequent(9000, 10)
 		if err != nil {
-			slog.Error("Failed to get closest available host port for network file share", "error", err)
+			slog.Error("Failed to get closest available host port for network file share", "error", err.Error())
 			os.Exit(1)
 		}
 
@@ -46,18 +46,20 @@ var runCmd = &cobra.Command{
 		// TODO: `slog` library prints entire stack traces for errors which makes reading errors challenging.
 
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
+			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsType, "luks", luksFlag)
+
 			err := fm.Mount(vmMountDevName, vm.MountOptions{
 				FSType: fsType,
 				LUKS:   luksFlag,
 			})
 			if err != nil {
-				slog.Error("Failed to mount the disk inside the VM", "error", err)
+				slog.Error("Failed to mount the disk inside the VM", "error", err.Error())
 				return 1
 			}
 
 			sharePWD, err := password.Generate(16, 10, 0, false, false)
 			if err != nil {
-				slog.Error("Failed to generate ephemeral password for network file share", "error", err)
+				slog.Error("Failed to generate ephemeral password for network file share", "error", err.Error())
 				return 1
 			}
 
@@ -67,7 +69,7 @@ var runCmd = &cobra.Command{
 
 			err = fm.StartFTP([]byte(sharePWD), networkSharePort+1, ftpPassivePortCount)
 			if err != nil {
-				slog.Error("Failed to start FTP server", "error", err)
+				slog.Error("Failed to start FTP server", "error", err.Error())
 				return 1
 			}
 

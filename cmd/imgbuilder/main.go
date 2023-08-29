@@ -19,13 +19,13 @@ var rootCmd = &cobra.Command{
 
 		bc, err := builder.NewBuildContext(slog.With("caller", "build-context"), baseISOPath, outImagePath, vmDebugFlag)
 		if err != nil {
-			slog.Error("Failed to create a new build context", "error", err)
+			slog.Error("Failed to create a new build context", "error", err.Error())
 			os.Exit(1)
 		}
 
 		err = bc.BuildWithInterruptHandler()
 		if err != nil {
-			slog.Error("Failed to build an image", "error", err)
+			slog.Error("Failed to build an image", "error", err.Error())
 			os.Exit(1)
 		}
 

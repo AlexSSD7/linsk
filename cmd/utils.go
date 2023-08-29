@@ -40,7 +40,7 @@ func doUSBRootCheck() {
 
 	ok, err := checkIfRoot()
 	if err != nil {
-		slog.Error("Failed to check whether the command is ran by root", "error", err)
+		slog.Error("Failed to check whether the command is ran by root", "error", err.Error())
 		os.Exit(1)
 	}
 
@@ -64,6 +64,8 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			SnapshotMode: true,
 		}},
 
+		MemoryAlloc: vmMemAllocFlag,
+
 		USBDevices:               passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,
 
@@ -74,7 +76,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	// TODO: Alpine image should be downloaded from somewhere.
 	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)
 	if err != nil {
-		slog.Error("Failed to create vm instance", "error", err)
+		slog.Error("Failed to create vm instance", "error", err.Error())
 		os.Exit(1)
 	}
 
@@ -115,7 +117,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 				err := vi.Cancel()
 				if err != nil {
-					lg.Warn("Failed to cancel VM context", "error", err)
+					lg.Warn("Failed to cancel VM context", "error", err.Error())
 				}
 			}
 		}
@@ -130,12 +132,12 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 				err = fmt.Errorf("operation canceled by user")
 			}
 
-			slog.Error("Failed to start the VM", "error", err)
+			slog.Error("Failed to start the VM", "error", err.Error())
 			os.Exit(1)
 		case <-vi.SSHUpNotifyChan():
 			err := fm.Init()
 			if err != nil {
-				slog.Error("Failed to initialize File Manager", "error", err)
+				slog.Error("Failed to initialize File Manager", "error", err.Error())
 				os.Exit(1)
 			}
 
@@ -143,7 +145,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 			err = vi.Cancel()
 			if err != nil {
-				slog.Error("Failed to cancel VM context", "error", err)
+				slog.Error("Failed to cancel VM context", "error", err.Error())
 				os.Exit(1)
 			}
 
@@ -152,7 +154,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			select {
 			case err := <-runErrCh:
 				if err != nil {
-					slog.Error("Failed to run the VM", "error", err)
+					slog.Error("Failed to run the VM", "error", err.Error())
 					os.Exit(1)
 				}
 			default:

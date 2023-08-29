@@ -26,6 +26,9 @@ func Execute() {
 
 var vmDebugFlag bool
 var unrestrictedNetworkingFlag bool
+var vmMemAllocFlag uint64
+
+// TODO: Version command.
 
 func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
@@ -34,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(shellCmd)
 
-	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vmdebug", false, "Enable VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
-	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "unrestricted-networking", false, "Enable unrestricted networking. This will allow the VM to connect to the internet.")
+	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vmdebug", false, "Enables the VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
+	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "unrestricted-networking", false, "Enables unrestricted networking. This will allow the VM to connect to the internet.")
+	rootCmd.PersistentFlags().Uint64Var(&vmMemAllocFlag, "vm-mem-alloc", 512, "Specifies the VM memory allocation in KiB")
 }

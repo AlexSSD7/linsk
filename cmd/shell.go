@@ -32,7 +32,7 @@ var shellCmd = &cobra.Command{
 
 			fpr, err := vm.ParsePortForwardString(fp)
 			if err != nil {
-				slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err)
+				slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err.Error())
 				os.Exit(1)
 			}
 
@@ -42,7 +42,7 @@ var shellCmd = &cobra.Command{
 		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
 			sc, err := i.DialSSH()
 			if err != nil {
-				slog.Error("Failed to dial VM SSH", "error", err)
+				slog.Error("Failed to dial VM SSH", "error", err.Error())
 				return 1
 			}
 
@@ -50,7 +50,7 @@ var shellCmd = &cobra.Command{
 
 			sess, err := sc.NewSession()
 			if err != nil {
-				slog.Error("Failed to create new VM SSH session", "error", err)
+				slog.Error("Failed to create new VM SSH session", "error", err.Error())
 				return 1
 			}
 
@@ -59,14 +59,14 @@ var shellCmd = &cobra.Command{
 			termFD := int(os.Stdin.Fd())
 			termState, err := term.MakeRaw(termFD)
 			if err != nil {
-				slog.Error("Failed to make raw terminal", "error", err)
+				slog.Error("Failed to make raw terminal", "error", err.Error())
 				return 1
 			}
 
 			defer func() {
 				err := term.Restore(termFD, termState)
 				if err != nil {
-					slog.Error("Failed to restore terminal", "error", err)
+					slog.Error("Failed to restore terminal", "error", err.Error())
 				}
 			}()
 
@@ -78,7 +78,7 @@ var shellCmd = &cobra.Command{
 
 			termWidth, termHeight, err := term.GetSize(termFDGetSize)
 			if err != nil {
-				slog.Error("Failed to get terminal size", "error", err)
+				slog.Error("Failed to get terminal size", "error", err.Error())
 				return 1
 			}
 
@@ -95,7 +95,7 @@ var shellCmd = &cobra.Command{
 
 			err = sess.RequestPty(term, termHeight, termWidth, termModes)
 			if err != nil {
-				slog.Error("Failed to request VM SSH pty", "error", err)
+				slog.Error("Failed to request VM SSH pty", "error", err.Error())
 				return 1
 			}
 
@@ -105,7 +105,7 @@ var shellCmd = &cobra.Command{
 
 			err = sess.Shell()
 			if err != nil {
-				slog.Error("Start VM SSH shell", "error", err)
+				slog.Error("Start VM SSH shell", "error", err.Error())
 				return 1
 			}
 
@@ -114,7 +114,7 @@ var shellCmd = &cobra.Command{
 			go func() {
 				err = sess.Wait()
 				if err != nil {
-					slog.Error("Failed to wait for VM SSH session to finish", "error", err)
+					slog.Error("Failed to wait for VM SSH session to finish", "error", err.Error())
 				}
 
 				doneCh <- struct{}{}

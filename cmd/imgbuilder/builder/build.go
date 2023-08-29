@@ -88,7 +88,7 @@ func (bc *BuildContext) BuildWithInterruptHandler() error {
 	defer func() {
 		err := bc.vi.Cancel()
 		if err != nil {
-			bc.logger.Error("Failed to cancel VM context", "error", err)
+			bc.logger.Error("Failed to cancel VM context", "error", err.Error())
 		}
 	}()
 
@@ -129,7 +129,7 @@ func (bc *BuildContext) BuildWithInterruptHandler() error {
 
 				err := bc.vi.Cancel()
 				if err != nil {
-					lg.Warn("Failed to cancel VM context", "error", err)
+					lg.Warn("Failed to cancel VM context", "error", err.Error())
 				}
 			}
 		}

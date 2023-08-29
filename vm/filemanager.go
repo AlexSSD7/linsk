@@ -40,11 +40,6 @@ func (fm *FileManager) Init() error {
 
 	defer func() { _ = sc.Close() }()
 
-	_, err = runSSHCmd(sc, "apk add util-linux lvm2")
-	if err != nil {
-		return errors.Wrap(err, "install utilities")
-	}
-
 	_, err = runSSHCmd(sc, "vgchange -ay")
 	if err != nil {
 		return errors.Wrap(err, "run vgchange cmd")
@@ -110,7 +105,7 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 		return errors.Wrap(err, "start cryptsetup luksopen cmd")
 	}
 
-	lg.Info("Attempting to open LUKS device")
+	lg.Info("Attempting to open a LUKS device")
 
 	_, err = os.Stderr.Write([]byte("Enter Password: "))
 	if err != nil {
@@ -140,6 +135,10 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 
 	err = sess.Wait()
 	if err != nil {
+		if strings.Contains(stderrBuf.String(), "Not enough available memory to open a keyslot.") {
+			fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag.")
+		}
+
 		return utils.WrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String())
 	}
 
@@ -268,11 +267,11 @@ pasv_address=127.0.0.1
 	go func() {
 		_, err = stdinPipe.Write(pwd)
 		if err != nil {
-			fm.vm.logger.Error("Failed to write FTP password to passwd stdin", "error", err)
+			fm.vm.logger.Error("Failed to write FTP password to passwd stdin", "error", err.Error())
 		}
 		_, err = stdinPipe.Write(pwd)
 		if err != nil {
-			fm.vm.logger.Error("Failed to write repeated FTP password to passwd stdin", "error", err)
+			fm.vm.logger.Error("Failed to write repeated FTP password to passwd stdin", "error", err.Error())
 		}
 	}()
 
