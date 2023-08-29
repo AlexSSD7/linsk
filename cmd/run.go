@@ -43,8 +43,6 @@ var runCmd = &cobra.Command{
 			})
 		}
 
-		// TODO: `slog` library prints entire stack traces for errors which makes reading errors challenging.
-
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
 			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsType, "luks", luksFlag)
 
@@ -59,13 +57,9 @@ var runCmd = &cobra.Command{
 
 			sharePWD, err := password.Generate(16, 10, 0, false, false)
 			if err != nil {
-				slog.Error("Failed to generate ephemeral password for network file share", "error", err.Error())
+				slog.Error("Failed to generate ephemeral password for the network file share", "error", err.Error())
 				return 1
 			}
-
-			shareURI := "ftp://linsk:" + sharePWD + "@localhost:" + fmt.Sprint(networkSharePort)
-
-			fmt.Fprintf(os.Stderr, "================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: FTP\nServer Address: ftp://localhost:%v\nUsername: linsk\nPassword: %v\n\nShare URI: %v\n================\n", networkSharePort, sharePWD, shareURI)
 
 			err = fm.StartFTP([]byte(sharePWD), networkSharePort+1, ftpPassivePortCount)
 			if err != nil {
@@ -74,6 +68,10 @@ var runCmd = &cobra.Command{
 			}
 
 			slog.Info("Started the network share successfully", "type", "ftp")
+
+			shareURI := "ftp://linsk:" + sharePWD + "@localhost:" + fmt.Sprint(networkSharePort)
+
+			fmt.Fprintf(os.Stderr, "================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: FTP\nServer Address: ftp://localhost:%v\nUsername: linsk\nPassword: %v\n\nShare URI: %v\n================\n", networkSharePort, sharePWD, shareURI)
 
 			<-ctx.Done()
 			return 0

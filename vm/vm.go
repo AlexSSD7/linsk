@@ -424,7 +424,7 @@ func (vm *VM) writeSerial(b []byte) error {
 	// and this will ensure that we do not write faster than the polling rate.
 	for i := range b {
 		_, err := vm.serialWrite.Write([]byte{b[i]})
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond)
 		if err != nil {
 			return errors.Wrapf(err, "write char #%v", i)
 		}

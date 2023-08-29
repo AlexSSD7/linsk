@@ -42,12 +42,11 @@ func doUSBRootCheck() {
 	ok, err := checkIfRoot()
 	if err != nil {
 		slog.Error("Failed to check whether the command is ran by root", "error", err.Error())
-		os.Exit(1)
+		return
 	}
 
 	if !ok {
-		slog.Error("USB passthrough on your OS requires this program to be ran as root")
-		os.Exit(1)
+		slog.Warn("USB passthrough on your OS usually requires this program to be ran as root")
 	}
 }
 
