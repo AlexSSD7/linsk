@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -35,7 +36,7 @@ var lsCmd = &cobra.Command{
 	},
 }
 
-func getDevicePassthroughConfig(val string) vm.USBDevicePassthroughConfig {
+func getDevicePassthroughConfig(val string) vm.PassthroughConfig {
 	valSplit := strings.Split(val, ":")
 	if want, have := 2, len(valSplit); want != have {
 		slog.Error("Bad device passthrough syntax", "error", fmt.Errorf("wrong items split by ':' count: want %v, have %v", want, have))
@@ -62,14 +63,33 @@ func getDevicePassthroughConfig(val string) vm.USBDevicePassthroughConfig {
 			os.Exit(1)
 		}
 
-		return vm.USBDevicePassthroughConfig{
-			VendorID:  uint16(vendorID),
-			ProductID: uint16(productID),
+		return vm.PassthroughConfig{
+			USB: []vm.USBDevicePassthroughConfig{{
+				VendorID:  uint16(vendorID),
+				ProductID: uint16(productID),
+			}},
 		}
+	case "dev":
+		devPath := filepath.Clean(valSplit[1])
+		stat, err := os.Stat(devPath)
+		if err != nil {
+			slog.Error("Failed to stat the device path", "error", err.Error(), "path", devPath)
+			os.Exit(1)
+		}
+
+		isDev := stat.Mode()&os.ModeDevice != 0
+		if !isDev {
+			slog.Error("Provided path is not a path to a valid block device", "path", devPath, "file-mode", stat.Mode())
+			os.Exit(1)
+		}
+
+		return vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
+			Path: devPath,
+		}}}
 	default:
 		slog.Error("Unknown device passthrough type", "value", valSplit[0])
 		os.Exit(1)
 		// This unreachable code is required to compile.
-		return vm.USBDevicePassthroughConfig{}
+		return vm.PassthroughConfig{}
 	}
 }

@@ -9,11 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type USBDevicePassthroughConfig struct {
-	VendorID  uint16
-	ProductID uint16
-}
-
 type PortForwardingRule struct {
 	HostIP   net.IP
 	HostPort uint16

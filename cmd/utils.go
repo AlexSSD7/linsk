@@ -51,10 +51,10 @@ func doUSBRootCheck() {
 }
 
 func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
-	var passthroughConfig []vm.USBDevicePassthroughConfig
+	var passthroughConfig vm.PassthroughConfig
 
 	if passthroughArg != "" {
-		passthroughConfig = []vm.USBDevicePassthroughConfig{getDevicePassthroughConfig(passthroughArg)}
+		passthroughConfig = getDevicePassthroughConfig(passthroughArg)
 		doUSBRootCheck()
 	}
 
@@ -66,7 +66,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 		MemoryAlloc: vmMemAllocFlag,
 
-		USBDevices:               passthroughConfig,
+		PassthroughConfig:        passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,
 
 		OSUpTimeout:  time.Duration(vmOSUpTimeoutFlag) * time.Second,

@@ -54,6 +54,8 @@ type VM struct {
 	// These are to be interacted with using `atomic` package
 	disposed uint32
 	canceled uint32
+
+	originalCfg VMConfig
 }
 
 type DriveConfig struct {
@@ -67,7 +69,7 @@ type VMConfig struct {
 
 	MemoryAlloc uint32 // In KiB.
 
-	USBDevices               []USBDevicePassthroughConfig
+	PassthroughConfig        PassthroughConfig
 	ExtraPortForwardingRules []PortForwardingRule
 
 	// Timeouts
@@ -149,26 +151,43 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		cmdArgs = append(cmdArgs, "-device", "virtio-gpu-device")
 	}
 
-	if len(cfg.USBDevices) != 0 {
-		cmdArgs = append(cmdArgs, "-device", "nec-usb-xhci")
-
-		for _, dev := range cfg.USBDevices {
-			cmdArgs = append(cmdArgs, "-device", "usb-host,vendorid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.VendorID))+",productid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.ProductID)))
-		}
-	}
-
 	for i, extraDrive := range cfg.Drives {
 		_, err = os.Stat(extraDrive.Path)
 		if err != nil {
 			return nil, errors.Wrapf(err, "stat extra drive #%v path", i)
 		}
 
-		driveArgs := "file=" + shellescape.Quote(extraDrive.Path) + ",format=qcow2,if=virtio"
+		driveArgs := "file=" + shellescape.Quote(extraDrive.Path) + ",format=qcow2,if=none,id=disk" + fmt.Sprint(i)
 		if extraDrive.SnapshotMode {
 			driveArgs += ",snapshot=on"
 		}
 
-		cmdArgs = append(cmdArgs, "-drive", driveArgs)
+		cmdArgs = append(cmdArgs, "-drive", driveArgs, "-device", "virtio-blk-pci,drive=disk"+fmt.Sprint(i)+",bootindex="+fmt.Sprint(i))
+	}
+
+	if len(cfg.PassthroughConfig.USB) != 0 {
+		cmdArgs = append(cmdArgs, "-device", "nec-usb-xhci")
+
+		for _, dev := range cfg.PassthroughConfig.USB {
+			cmdArgs = append(cmdArgs, "-device", "usb-host,vendorid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.VendorID))+",productid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.ProductID)))
+		}
+	}
+
+	for _, dev := range cfg.PassthroughConfig.Block {
+		// It's always a user's responsibility to ensure that no drives are mounted
+		// in both host and guest system. This should serve as the last resort.
+		{
+			seemsMounted, err := checkDeviceSeemsMounted(dev.Path)
+			if err != nil {
+				return nil, errors.Wrapf(err, "check whether device seems to be mounted (path '%v')", dev.Path)
+			}
+
+			if seemsMounted {
+				return nil, fmt.Errorf("device '%v' is already mounted in the host system", dev.Path)
+			}
+		}
+
+		cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(dev.Path)+",format=raw,aio=native,cache=none")
 	}
 
 	// We're not using clean `cdromImagePath` here because it is set to "."
@@ -235,6 +254,8 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 		osUpTimeout:  osUpTimeout,
 		sshUpTimeout: sshUpTimeout,
+
+		originalCfg: cfg,
 	}
 
 	vm.resetSerialStdout()
@@ -251,6 +272,8 @@ func (vm *VM) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "start qemu cmd")
 	}
+
+	go vm.runPeriodicHostMountChecker()
 
 	var globalErrsMu sync.Mutex
 	var globalErrs []error
@@ -498,4 +521,31 @@ func (vm *VM) DialSCP() (*scp.Client, error) {
 
 func (vm *VM) SSHUpNotifyChan() chan struct{} {
 	return vm.sshReadyCh
+}
+
+// It's always a user's responsibility to ensure that no drives are mounted
+// in both host and guest system. This should serve as the last resort.
+func (vm *VM) runPeriodicHostMountChecker() {
+	if len(vm.originalCfg.PassthroughConfig.Block) == 0 {
+		return
+	}
+
+	for {
+		select {
+		case <-vm.ctx.Done():
+			return
+		case <-time.After(time.Second):
+			for _, dev := range vm.originalCfg.PassthroughConfig.Block {
+				seemsMounted, err := checkDeviceSeemsMounted(dev.Path)
+				if err != nil {
+					vm.logger.Warn("Failed to check if a passed device seems to be mounted", "dev-path", dev.Path)
+					continue
+				}
+
+				if seemsMounted {
+					panic(fmt.Sprintf("CRITICAL: Passed-through device '%v' appears to have been mounted on the host OS. Forcefully exiting now to prevent data corruption.", dev.Path))
+				}
+			}
+		}
+	}
 }

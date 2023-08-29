@@ -103,10 +103,10 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 
 	installSSHDCmd := ""
 	if vm.installSSH {
-		installSSHDCmd = "apk add openssh; "
+		installSSHDCmd = "ifconfig eth0 up && ifconfig lo up && udhcpc; apk add openssh; "
 	}
 
-	cmd := `do_setup () { sh -c "set -ex; setup-alpine -q; ` + installSSHDCmd + `mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
+	cmd := `do_setup () { sh -c "set -ex; ` + installSSHDCmd + `mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
 
 	err = vm.writeSerial([]byte(cmd))
 	if err != nil {
