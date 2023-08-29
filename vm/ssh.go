@@ -121,7 +121,7 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 		case <-vm.ctx.Done():
 			return nil, vm.ctx.Err()
 		case <-time.After(time.Until(deadline)):
-			return nil, fmt.Errorf("setup command timed out %v", utils.GetLogErrMsg(stdOutErrBuf.String()))
+			return nil, fmt.Errorf("setup command timed out %v", utils.GetLogErrMsg(stdOutErrBuf.String(), "stdout/stderr log"))
 		case data := <-vm.serialStdoutCh:
 			prefix := []byte("SERIAL STATUS: ")
 			stdOutErrBuf.WriteString(utils.ClearUnprintableChars(string(data), true))
@@ -132,7 +132,7 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 
 				if data[len(prefix)] != '0' {
 					fmt.Fprintf(os.Stderr, "SSH SETUP FAILURE:\n%v", stdOutErrBuf.String())
-					return nil, fmt.Errorf("non-zero setup command status code: '%v' %v", string(data[len(prefix)]), utils.GetLogErrMsg(stdOutErrBuf.String()))
+					return nil, fmt.Errorf("non-zero setup command status code: '%v' %v", string(data[len(prefix)]), utils.GetLogErrMsg(stdOutErrBuf.String(), "stdout/stderr log"))
 				}
 
 				return sshSigner, nil

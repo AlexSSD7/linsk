@@ -43,7 +43,10 @@ type VM struct {
 	serialReader  *bufio.Reader
 	serialWrite   *io.PipeWriter
 	serialWriteMu sync.Mutex
-	stderrBuf     *bytes.Buffer
+	qemuStderrBuf *bytes.Buffer
+
+	osUpTimeout  time.Duration
+	sshUpTimeout time.Duration
 
 	serialStdoutCh chan []byte
 
@@ -61,10 +64,14 @@ type VMConfig struct {
 	CdromImagePath string
 	Drives         []DriveConfig
 
-	MemoryAlloc uint64 // In KiB.
+	MemoryAlloc uint32 // In KiB.
 
 	USBDevices               []USBDevicePassthroughConfig
 	ExtraPortForwardingRules []PortForwardingRule
+
+	// Timeouts
+	OSUpTimeout  time.Duration
+	SSHUpTimeout time.Duration
 
 	// Mostly debug-related options.
 	UnrestrictedNetworking bool
@@ -175,6 +182,24 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		return nil, fmt.Errorf("cannot install base utilities with unrestricted networking disabled")
 	}
 
+	// NOTE: The default timeouts below have no relation to the default
+	// timeouts set by the CLI. These work only if no timeout was supplied
+	// in the config programmatically. Defaults set here are quite conservative.
+	osUpTimeout := time.Second * 60
+	if cfg.OSUpTimeout != 0 {
+		osUpTimeout = cfg.OSUpTimeout
+	}
+	sshUpTimeout := time.Second * 120
+	if cfg.SSHUpTimeout != 0 {
+		sshUpTimeout = cfg.SSHUpTimeout
+	}
+
+	if sshUpTimeout < osUpTimeout {
+		return nil, fmt.Errorf("vm ssh setup timeout cannot be lower than os up timeout")
+	}
+
+	// No errors beyond this point.
+
 	sysRead, userWrite := io.Pipe()
 	userRead, sysWrite := io.Pipe()
 
@@ -204,10 +229,13 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		sshReadyCh:    make(chan struct{}),
 		installSSH:    cfg.InstallBaseUtilities,
 
-		serialRead:   userRead,
-		serialReader: userReader,
-		serialWrite:  userWrite,
-		stderrBuf:    stderrBuf,
+		serialRead:    userRead,
+		serialReader:  userReader,
+		serialWrite:   userWrite,
+		qemuStderrBuf: stderrBuf,
+
+		osUpTimeout:  osUpTimeout,
+		sshUpTimeout: sshUpTimeout,
 	}
 
 	vm.resetSerialStdout()
@@ -235,6 +263,27 @@ func (vm *VM) Run() error {
 		globalErrs = append(globalErrs, err, errors.Wrap(vm.Cancel(), "cancel on error"))
 	}
 
+	bootReadyCh := make(chan struct{})
+
+	go func() {
+		select {
+		case <-time.After(vm.osUpTimeout):
+			vm.logger.Warn("A VM boot timeout detected, consider running with --vmdebug to investigate")
+			globalErrFn(fmt.Errorf("vm boot timeout %v", utils.GetLogErrMsg(string(vm.consumeSerialStdout()), "serial log")))
+		case <-bootReadyCh:
+			vm.logger.Info("The VM is up, setting it up")
+		}
+	}()
+
+	go func() {
+		select {
+		case <-time.After(vm.sshUpTimeout):
+			globalErrFn(fmt.Errorf("vm setup timeout %v", utils.GetLogErrMsg(string(vm.consumeSerialStdout()), "serial log")))
+		case <-vm.sshReadyCh:
+			vm.logger.Info("The VM is ready")
+		}
+	}()
+
 	vm.logger.Info("Booting the VM")
 
 	go func() {
@@ -249,7 +298,8 @@ func (vm *VM) Run() error {
 			return
 		}
 
-		vm.logger.Info("Setting the VM up")
+		// This will disable the timeout-handling goroutine.
+		close(bootReadyCh)
 
 		sshSigner, err := vm.sshSetup()
 		if err != nil {
@@ -284,8 +334,6 @@ func (vm *VM) Run() error {
 
 		// This is to notify everyone waiting for SSH to be up that it's ready to go.
 		close(vm.sshReadyCh)
-
-		vm.logger.Info("The VM is ready")
 	}()
 
 	_, err = vm.cmd.Process.Wait()
@@ -296,14 +344,14 @@ func (vm *VM) Run() error {
 			errors.Wrap(cancelErr, "cancel"),
 		)
 
-		return fmt.Errorf("%w %v", combinedErr, utils.GetLogErrMsg(vm.stderrBuf.String()))
+		return fmt.Errorf("%w %v", combinedErr, utils.GetLogErrMsg(vm.qemuStderrBuf.String(), "qemu stderr log"))
 	}
 
 	combinedErr := multierr.Combine(
 		append(globalErrs, errors.Wrap(cancelErr, "cancel on exit"))...,
 	)
 	if combinedErr != nil {
-		return fmt.Errorf("%w %v", combinedErr, utils.GetLogErrMsg(vm.stderrBuf.String()))
+		return fmt.Errorf("%w %v", combinedErr, utils.GetLogErrMsg(vm.qemuStderrBuf.String(), "qemu stderr log"))
 	}
 
 	return nil
@@ -389,7 +437,7 @@ func (vm *VM) runVMLoginHandler() error {
 	for {
 		select {
 		case <-vm.ctx.Done():
-			return nil
+			return vm.ctx.Err()
 		case <-time.After(time.Second):
 			peek, err := vm.serialReader.Peek(vm.serialReader.Buffered())
 			if err != nil {
@@ -412,6 +460,19 @@ func (vm *VM) runVMLoginHandler() error {
 
 func (vm *VM) resetSerialStdout() {
 	vm.serialStdoutCh = make(chan []byte, 32)
+}
+
+func (vm *VM) consumeSerialStdout() []byte {
+	buf := bytes.NewBuffer(nil)
+
+	for {
+		select {
+		case data := <-vm.serialStdoutCh:
+			buf.Write(data)
+		default:
+			return buf.Bytes()
+		}
+	}
 }
 
 func (vm *VM) DialSSH() (*ssh.Client, error) {

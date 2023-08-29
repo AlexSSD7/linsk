@@ -53,6 +53,7 @@ func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, sh
 		Drives: []vm.DriveConfig{{
 			Path: outPath,
 		}},
+		MemoryAlloc:            512,
 		UnrestrictedNetworking: true,
 		ShowDisplay:            showVMDisplay,
 		InstallBaseUtilities:   true,

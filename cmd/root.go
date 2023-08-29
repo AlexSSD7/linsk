@@ -26,7 +26,9 @@ func Execute() {
 
 var vmDebugFlag bool
 var unrestrictedNetworkingFlag bool
-var vmMemAllocFlag uint64
+var vmMemAllocFlag uint32
+var vmSSHSetupTimeoutFlag uint32
+var vmOSUpTimeoutFlag uint32
 
 // TODO: Version command.
 
@@ -39,5 +41,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vmdebug", false, "Enables the VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
 	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "unrestricted-networking", false, "Enables unrestricted networking. This will allow the VM to connect to the internet.")
-	rootCmd.PersistentFlags().Uint64Var(&vmMemAllocFlag, "vm-mem-alloc", 512, "Specifies the VM memory allocation in KiB")
+	rootCmd.PersistentFlags().Uint32Var(&vmMemAllocFlag, "vm-mem-alloc", 512, "Specifies the VM memory allocation in KiB")
+	rootCmd.PersistentFlags().Uint32Var(&vmOSUpTimeoutFlag, "vm-os-up-timeout", 30, "Specifies the VM OS-up timeout in seconds.")
+	rootCmd.PersistentFlags().Uint32Var(&vmSSHSetupTimeoutFlag, "vm-ssh-setup-timeout", 60, "Specifies the VM SSH server setup timeout in seconds. This cannot be lower than the OS-up timeout.")
 }

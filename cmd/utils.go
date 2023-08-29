@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
+	"time"
 
 	"log/slog"
 
@@ -68,6 +69,9 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 		USBDevices:               passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,
+
+		OSUpTimeout:  time.Duration(vmOSUpTimeoutFlag) * time.Second,
+		SSHUpTimeout: time.Duration(vmSSHSetupTimeoutFlag) * time.Second,
 
 		UnrestrictedNetworking: unrestrictedNetworking,
 		ShowDisplay:            vmDebugFlag,

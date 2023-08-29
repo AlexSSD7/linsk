@@ -8,10 +8,10 @@ import (
 )
 
 func WrapErrWithLog(err error, msg, log string) error {
-	return errors.Wrapf(err, "%v %v", msg, GetLogErrMsg(log))
+	return errors.Wrapf(err, "%v %v", msg, GetLogErrMsg(log, "log"))
 }
 
-func GetLogErrMsg(s string) string {
+func GetLogErrMsg(s string, logLabel string) string {
 	logToInclude := strings.ReplaceAll(s, "\n", "\\n")
 	logToInclude = strings.TrimSuffix(logToInclude, "\\n")
 	logToInclude = ClearUnprintableChars(logToInclude, false)
@@ -22,5 +22,5 @@ func GetLogErrMsg(s string) string {
 		logToInclude = fmt.Sprintf("[%v chars trimmed]", origLogLen) + logToInclude[len(logToInclude)-maxLogLen:]
 	}
 
-	return fmt.Sprintf("(log: '%v')", logToInclude)
+	return fmt.Sprintf("(%v: '%v')", logLabel, logToInclude)
 }
