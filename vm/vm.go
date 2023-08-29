@@ -173,6 +173,10 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		}
 	}
 
+	if len(cfg.PassthroughConfig.Block) != 0 {
+		logger.Warn("Detected raw block device passthrough, please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time")
+	}
+
 	for _, dev := range cfg.PassthroughConfig.Block {
 		// It's always a user's responsibility to ensure that no drives are mounted
 		// in both host and guest system. This should serve as the last resort.
@@ -183,7 +187,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 			}
 
 			if seemsMounted {
-				return nil, fmt.Errorf("device '%v' is already mounted in the host system", dev.Path)
+				return nil, fmt.Errorf("device '%v' seems to be already mounted in the host system", dev.Path)
 			}
 		}
 
@@ -543,6 +547,7 @@ func (vm *VM) runPeriodicHostMountChecker() {
 				}
 
 				if seemsMounted {
+					_ = vm.cmd.Process.Kill()
 					panic(fmt.Sprintf("CRITICAL: Passed-through device '%v' appears to have been mounted on the host OS. Forcefully exiting now to prevent data corruption.", dev.Path))
 				}
 			}
