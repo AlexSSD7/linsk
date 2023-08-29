@@ -2,8 +2,6 @@ package vm
 
 import (
 	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -11,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlexSSD7/linsk/sshutil"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/pkg/errors"
@@ -74,6 +73,8 @@ func (vm *VM) scanSSHIdentity() ([]byte, error) {
 				continue
 			}
 
+			// This isn't clean at all, but there is no better
+			// way to achieve an exit status check like this.
 			prefix := []byte("SERIAL STATUS: ")
 			if bytes.HasPrefix(data, prefix) {
 				if len(data) == len(prefix) {
@@ -95,7 +96,7 @@ func (vm *VM) scanSSHIdentity() ([]byte, error) {
 func (vm *VM) sshSetup() (ssh.Signer, error) {
 	vm.resetSerialStdout()
 
-	sshSigner, sshPublicKey, err := generateSSHKey()
+	sshSigner, sshPublicKey, err := sshutil.GenerateSSHKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "generate ssh key")
 	}
@@ -123,6 +124,8 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 		case <-time.After(time.Until(deadline)):
 			return nil, fmt.Errorf("setup command timed out %v", utils.GetLogErrMsg(stdOutErrBuf.String(), "stdout/stderr log"))
 		case data := <-vm.serialStdoutCh:
+			// This isn't clean at all, but there is no better
+			// way to achieve an exit status check like this.
 			prefix := []byte("SERIAL STATUS: ")
 			stdOutErrBuf.WriteString(utils.ClearUnprintableChars(string(data), true))
 			if bytes.HasPrefix(data, prefix) {
@@ -131,7 +134,10 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 				}
 
 				if data[len(prefix)] != '0' {
+					// A non-pretty yet effective debug print to assist with debugging
+					// in case something ever goes wrong.
 					fmt.Fprintf(os.Stderr, "SSH SETUP FAILURE:\n%v", stdOutErrBuf.String())
+
 					return nil, fmt.Errorf("non-zero setup command status code: '%v' %v", string(data[len(prefix)]), utils.GetLogErrMsg(stdOutErrBuf.String(), "stdout/stderr log"))
 				}
 
@@ -139,42 +145,4 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 			}
 		}
 	}
-}
-
-func generateSSHKey() (ssh.Signer, []byte, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "generate rsa private key")
-	}
-
-	signer, err := ssh.NewSignerFromKey(privateKey)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "create signer from key")
-	}
-
-	return signer, ssh.MarshalAuthorizedKey(signer.PublicKey()), nil
-}
-
-func runSSHCmd(c *ssh.Client, cmd string) ([]byte, error) {
-	sess, err := c.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "create new vm ssh session")
-	}
-
-	// TODO: Timeouts
-
-	defer func() { _ = sess.Close() }()
-
-	stdout := bytes.NewBuffer(nil)
-	stderr := bytes.NewBuffer(nil)
-
-	sess.Stdout = stdout
-	sess.Stderr = stderr
-
-	err = sess.Run(cmd)
-	if err != nil {
-		return nil, utils.WrapErrWithLog(err, "run cmd", stderr.String())
-	}
-
-	return stdout.Bytes(), nil
 }

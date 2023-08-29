@@ -24,7 +24,7 @@ func ParsePortForwardString(s string) (PortForwardingRule, error) {
 	split := strings.Split(s, ":")
 	switch len(split) {
 	case 2:
-		// <HOST PORT>:<VM PORT>
+		// Format: <HOST PORT>:<VM PORT>
 		hostPort, err := strconv.ParseUint(split[0], 10, 16)
 		if err != nil {
 			return PortForwardingRule{}, errors.Wrap(err, "parse host port")
@@ -40,7 +40,7 @@ func ParsePortForwardString(s string) (PortForwardingRule, error) {
 			VMPort:   uint16(vmPort),
 		}, nil
 	case 3:
-		// <HOST IP>:<HOST PORT>:<VM PORT>
+		// Format: <HOST IP>:<HOST PORT>:<VM PORT>
 		hostIP := net.ParseIP(split[0])
 		if hostIP == nil {
 			return PortForwardingRule{}, fmt.Errorf("bad host ip")

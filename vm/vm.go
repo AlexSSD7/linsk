@@ -17,6 +17,7 @@ import (
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/sshutil"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/bramvdbogaerde/go-scp"
@@ -90,8 +91,6 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "get free port for ssh server")
 	}
-
-	// TODO: Configurable memory allocation
 
 	cmdArgs := []string{"-serial", "stdio", "-m", fmt.Sprint(cfg.MemoryAlloc), "-smp", fmt.Sprint(runtime.NumCPU())}
 
@@ -373,7 +372,7 @@ func (vm *VM) Cancel() error {
 		}
 	} else {
 		vm.logger.Warn("Sending poweroff command to the VM")
-		_, err = runSSHCmd(sc, "poweroff")
+		_, err = sshutil.RunSSHCmd(context.Background(), sc, "poweroff")
 		_ = sc.Close()
 		if err != nil {
 			vm.logger.Warn("Could not power off the VM safely", "error", err.Error())

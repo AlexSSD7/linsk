@@ -9,6 +9,7 @@ import (
 )
 
 func prepareVMCmd(cmd *exec.Cmd) {
+	// This is to prevent Ctrl+C propagating to the child process.
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
 	}

@@ -61,7 +61,7 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
-			err = fm.StartFTP([]byte(sharePWD), networkSharePort+1, ftpPassivePortCount)
+			err = fm.StartFTP(sharePWD, networkSharePort+1, ftpPassivePortCount)
 			if err != nil {
 				slog.Error("Failed to start FTP server", "error", err.Error())
 				return 1

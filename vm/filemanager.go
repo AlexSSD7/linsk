@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AlexSSD7/linsk/sshutil"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/pkg/errors"
@@ -42,7 +43,7 @@ func (fm *FileManager) Init() error {
 
 	defer func() { _ = sc.Close() }()
 
-	_, err = runSSHCmd(sc, "vgchange -ay")
+	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, "vgchange -ay")
 	if err != nil {
 		return errors.Wrap(err, "run vgchange cmd")
 	}
@@ -56,25 +57,12 @@ func (fm *FileManager) Lsblk() ([]byte, error) {
 		return nil, errors.Wrap(err, "dial vm ssh")
 	}
 
-	defer func() { _ = sc.Close() }()
-
-	sess, err := sc.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "create new vm ssh session")
-	}
-
-	defer func() { _ = sess.Close() }()
-
-	ret := new(bytes.Buffer)
-
-	sess.Stdout = ret
-
-	err = sess.Run("lsblk -o NAME,SIZE,FSTYPE,LABEL -e 7,11,2,253")
+	ret, err := sshutil.RunSSHCmd(fm.vm.ctx, sc, "lsblk -o NAME,SIZE,FSTYPE,LABEL -e 7,11,2,253")
 	if err != nil {
 		return nil, errors.Wrap(err, "run lsblk")
 	}
 
-	return ret.Bytes(), nil
+	return ret, nil
 }
 
 type MountOptions struct {
@@ -87,105 +75,79 @@ const luksDMName = "cryptmnt"
 func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 	lg := fm.logger.With("vm-path", fullDevPath)
 
-	sess, err := sc.NewSession()
-	if err != nil {
-		return errors.Wrap(err, "create new vm ssh session")
-	}
+	return sshutil.NewSSHSessionWithDelayedTimeout(fm.vm.ctx, time.Second*15, sc, func(sess *ssh.Session, startTimeout func()) error {
+		stdinPipe, err := sess.StdinPipe()
+		if err != nil {
+			return errors.Wrap(err, "create vm ssh session stdin pipe")
+		}
 
-	stdinPipe, err := sess.StdinPipe()
-	if err != nil {
-		return errors.Wrap(err, "create vm ssh session stdin pipe")
-	}
+		stderrBuf := bytes.NewBuffer(nil)
+		sess.Stderr = stderrBuf
 
-	stderrBuf := bytes.NewBuffer(nil)
-	sess.Stderr = stderrBuf
+		err = sess.Start("cryptsetup luksOpen " + shellescape.Quote(fullDevPath) + " " + luksDMName)
+		if err != nil {
+			return errors.Wrap(err, "start cryptsetup luksopen cmd")
+		}
 
-	err = sess.Start("cryptsetup luksOpen " + shellescape.Quote(fullDevPath) + " " + luksDMName)
-	if err != nil {
-		return errors.Wrap(err, "start cryptsetup luksopen cmd")
-	}
+		lg.Info("Attempting to open a LUKS device")
 
-	lg.Info("Attempting to open a LUKS device")
+		_, err = os.Stderr.Write([]byte("Enter Password: "))
+		if err != nil {
+			return errors.Wrap(err, "write prompt to stderr")
+		}
 
-	_, err = os.Stderr.Write([]byte("Enter Password: "))
-	if err != nil {
-		return errors.Wrap(err, "write prompt to stderr")
-	}
+		pwd, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return errors.Wrap(err, "read luks password")
+		}
 
-	pwd, err := term.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return errors.Wrap(err, "read luks password")
-	}
+		fmt.Print("\n")
 
-	fmt.Print("\n")
+		// We start the timeout countdown now only to avoid timing out
+		// while the user is entering the password, or shortly after that.
+		startTimeout()
 
-	var wErr error
-	var wWG sync.WaitGroup
+		var wErr error
+		var wWG sync.WaitGroup
 
-	wWG.Add(1)
-	go func() {
-		defer wWG.Done()
+		wWG.Add(1)
+		go func() {
+			defer wWG.Done()
 
-		_, err := stdinPipe.Write(pwd)
-		_, err2 := stdinPipe.Write([]byte("\n"))
-		wErr = errors.Wrap(multierr.Combine(err, err2), "write password to stdin")
-	}()
+			_, err := stdinPipe.Write(pwd)
+			_, err2 := stdinPipe.Write([]byte("\n"))
+			wErr = errors.Wrap(multierr.Combine(err, err2), "write password to stdin")
+		}()
 
-	defer func() {
-		// Clear the memory up.
-		{
-			for i := 0; i < len(pwd); i++ {
-				pwd[i] = 0
-			}
+		defer func() {
+			// Clear the memory up for security.
+			{
+				for i := 0; i < len(pwd); i++ {
+					pwd[i] = 0
+				}
 
-			for i := 0; i < 4; i++ {
+				// This is my paranoia.
+				_, _ = rand.Read(pwd)
 				_, _ = rand.Read(pwd)
 			}
-		}
-	}()
+		}()
 
-	done := make(chan struct{})
-	defer close(done)
+		err = sess.Wait()
+		if err != nil {
+			if strings.Contains(stderrBuf.String(), "Not enough available memory to open a keyslot.") {
+				fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag.")
+			}
 
-	var timedOut bool
-
-	go func() {
-		tm := func() {
-			timedOut = true
-			_ = sc.Close()
-		}
-		select {
-		case <-fm.vm.ctx.Done():
-			tm()
-		case <-time.After(time.Second * 1):
-			tm()
-		case <-done:
-		}
-	}()
-
-	checkTimeoutErr := func(err error) error {
-		if timedOut {
-			return fmt.Errorf("timed out (%w)", err)
+			return utils.WrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String())
 		}
 
-		return err
-	}
+		lg.Info("LUKS device opened successfully")
 
-	err = sess.Wait()
-	if err != nil {
-		if strings.Contains(stderrBuf.String(), "Not enough available memory to open a keyslot.") {
-			fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag.")
-		}
+		_ = stdinPipe.Close()
+		wWG.Wait()
 
-		return checkTimeoutErr(utils.WrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String()))
-	}
-
-	lg.Info("LUKS device opened successfully")
-
-	_ = stdinPipe.Close()
-	wWG.Wait()
-
-	return wErr
+		return wErr
+	})
 }
 
 func (fm *FileManager) Mount(devName string, mo MountOptions) error {
@@ -199,6 +161,10 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 		return fmt.Errorf("bad device name")
 	}
 
+	// We're intentionally not calling filepath.Clean() as
+	// this causes unintended consequences when run on Windows.
+	// (Windows Go standard library treats the path as it's for
+	// Windows, but we're targeting a Linux VM.)
 	fullDevPath := "/dev/" + devName
 
 	if mo.FSType == "" {
@@ -221,42 +187,16 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 		fullDevPath = "/dev/mapper/" + luksDMName
 	}
 
-	done := make(chan struct{})
-	defer close(done)
-
-	var timedOut bool
-
-	go func() {
-		tm := func() {
-			timedOut = true
-			_ = sc.Close()
-		}
-		select {
-		case <-fm.vm.ctx.Done():
-			tm()
-		case <-time.After(time.Second * 10):
-			tm()
-		case <-done:
-		}
-	}()
-
-	checkTimeoutErr := func(err error) error {
-		if timedOut {
-			return fmt.Errorf("timed out (%w)", err)
-		}
-
-		return err
-	}
-
-	_, err = runSSHCmd(sc, "mount -t "+shellescape.Quote(mo.FSType)+" "+shellescape.Quote(fullDevPath)+" /mnt")
+	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, "mount -t "+shellescape.Quote(mo.FSType)+" "+shellescape.Quote(fullDevPath)+" /mnt")
 	if err != nil {
-		return checkTimeoutErr(errors.Wrap(err, "run mount cmd"))
+		return errors.Wrap(err, "run mount cmd")
 	}
 
 	return nil
 }
 
-func (fm *FileManager) StartFTP(pwd []byte, passivePortStart uint16, passivePortCount uint16) error {
+func (fm *FileManager) StartFTP(pwd string, passivePortStart uint16, passivePortCount uint16) error {
+	// This timeout is for the SCP client exclusively.
 	scpCtx, scpCtxCancel := context.WithTimeout(fm.vm.ctx, time.Second*5)
 	defer scpCtxCancel()
 
@@ -292,74 +232,16 @@ pasv_address=127.0.0.1
 		return errors.Wrap(err, "dial ssh")
 	}
 
-	done := make(chan struct{})
-	defer close(done)
-
-	var timedOut bool
-
-	go func() {
-		tm := func() {
-			timedOut = true
-			_ = sc.Close()
-		}
-		select {
-		case <-fm.vm.ctx.Done():
-			tm()
-		case <-time.After(time.Second * 15):
-			tm()
-		case <-done:
-		}
-	}()
-
-	checkTimeoutErr := func(err error) error {
-		if timedOut {
-			return fmt.Errorf("timed out (%w)", err)
-		}
-
-		return err
-	}
-
 	defer func() { _ = sc.Close() }()
 
-	_, err = runSSHCmd(sc, "rc-update add vsftpd && rc-service vsftpd start")
+	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, "rc-update add vsftpd && rc-service vsftpd start")
 	if err != nil {
-		return checkTimeoutErr(errors.Wrap(err, "add and start ftpd service"))
+		return errors.Wrap(err, "add and start ftpd service")
 	}
 
-	sess, err := sc.NewSession()
+	err = sshutil.ChangeUnixPass(fm.vm.ctx, sc, "linsk", pwd)
 	if err != nil {
-		return checkTimeoutErr(errors.Wrap(err, "create new ssh session"))
-	}
-
-	pwd = append(pwd, '\n')
-
-	stderr := bytes.NewBuffer(nil)
-	sess.Stderr = stderr
-
-	stdinPipe, err := sess.StdinPipe()
-	if err != nil {
-		return checkTimeoutErr(errors.Wrap(err, "stdin pipe"))
-	}
-
-	err = sess.Start("passwd linsk")
-	if err != nil {
-		return checkTimeoutErr(errors.Wrap(err, "start change user password cmd"))
-	}
-
-	go func() {
-		_, err = stdinPipe.Write(pwd)
-		if err != nil {
-			fm.vm.logger.Error("Failed to write FTP password to passwd stdin", "error", err.Error())
-		}
-		_, err = stdinPipe.Write(pwd)
-		if err != nil {
-			fm.vm.logger.Error("Failed to write repeated FTP password to passwd stdin", "error", err.Error())
-		}
-	}()
-
-	err = sess.Wait()
-	if err != nil {
-		return checkTimeoutErr(utils.WrapErrWithLog(err, "wait for change user password cmd", stderr.String()))
+		return errors.Wrap(err, "change unix pass")
 	}
 
 	return nil

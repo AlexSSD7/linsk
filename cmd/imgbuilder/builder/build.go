@@ -38,7 +38,7 @@ func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, sh
 			return nil, errors.Wrap(err, "stat output file")
 		}
 
-		// File doesn't exist. Continuing.
+		// File doesn't exist. Going forward with creating a new .qcow2 image.
 	} else {
 		return nil, fmt.Errorf("output file already exists")
 	}
@@ -182,8 +182,6 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 	if err != nil {
 		return errors.Wrap(err, "new session")
 	}
-
-	// TODO: Timeout for this command.
 
 	stderr := bytes.NewBuffer(nil)
 	sess.Stderr = stderr

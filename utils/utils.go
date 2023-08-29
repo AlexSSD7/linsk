@@ -21,13 +21,19 @@ func ClearUnprintableChars(s string, allowNewlines bool) string {
 	}, s)
 }
 
-var devNameRegexp = regexp.MustCompile("^[0-9a-z_-]+$")
+var devNameRegexp = regexp.MustCompile(`^[0-9a-z_-]+$`)
 
 func ValidateDevName(s string) bool {
 	// Allow mapped devices.
 	s = strings.TrimPrefix(s, "mapper/")
 
 	return devNameRegexp.MatchString(s)
+}
+
+var unixUsernameRegexp = regexp.MustCompile(`^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$`)
+
+func ValidateUnixUsername(s string) bool {
+	return unixUsernameRegexp.MatchString(s)
 }
 
 func Uint16ToBytesBE(v uint16) []byte {
