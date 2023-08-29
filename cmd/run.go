@@ -13,10 +13,9 @@ import (
 )
 
 var runCmd = &cobra.Command{
-	Use: "run",
-	// TODO: Fill this
-	// Short: "",
-	Args: cobra.ExactArgs(3),
+	Use:   "run",
+	Short: "Start a VM and expose a file share.",
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		vmMountDevName := args[1]
 		fsType := args[2]

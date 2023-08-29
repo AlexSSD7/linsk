@@ -14,10 +14,9 @@ import (
 )
 
 var shellCmd = &cobra.Command{
-	Use: "shell",
-	// TODO: Fill this
-	// Short: "",
-	Args: cobra.RangeArgs(0, 1),
+	Use:   "shell",
+	Short: "Start a VM and access the shell. Useful for formatting drives and debugging.",
+	Args:  cobra.RangeArgs(0, 1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var passthroughArg string
 		if len(args) > 0 {

@@ -10,11 +10,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "imgbuilder",
-	// TODO: Fill this
-	// Short:        "",
-	// Long:         ``,
-	Args: cobra.ExactArgs(2),
+	Use:   "imgbuilder",
+	Short: "Build an Alpine Linux image for Linsk. A base Alpine VM disc image is required.",
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		baseISOPath := filepath.Clean(args[0])
 		outImagePath := filepath.Clean(args[1])

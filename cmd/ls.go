@@ -13,10 +13,9 @@ import (
 )
 
 var lsCmd = &cobra.Command{
-	Use: "ls",
-	// TODO: Fill this
-	// Short: "",
-	Args: cobra.ExactArgs(1),
+	Use:   "ls",
+	Short: "Start a VM and list all user drives within the VM. Uses lsblk command under the hood.",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
 			lsblkOut, err := fm.Lsblk()

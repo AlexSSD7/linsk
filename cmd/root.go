@@ -9,10 +9,12 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "linsk",
-	// TODO: Fill this
-	// Short:        "",
-	// Long:         ``,
+	Use:   "linsk",
+	Short: "Access Linux-native file system infrastructure (including LVM and LUKS) on macOS and Linux. Powered by a lightweight Alpine Linux VM and FTP.",
+	Long: `Linsk is a utility that allows you to access Linux-native file system infrastructure, including device mapping technologies like LVM and LUKS without compromise on other operating systems that have little ` +
+		`to no support for Linux's wide range of file systems, mainly aiming macOS and Windows. Linsk does not reimplement any file system. Instead, Linsk ` +
+		`utilizes a lightweight Alpine Linux VM to tap into the native Linux software ecosystem. The files are then exposed to the host via fast and widely-supported FTP, ` +
+		`operating at near-hardware speeds.`,
 }
 
 func Execute() {
@@ -33,5 +35,5 @@ func init() {
 	rootCmd.AddCommand(shellCmd)
 
 	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vmdebug", false, "Enable VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
-	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "unsafe-unrestricted-networking", false, "(UNSAFE) Enable unrestricted networking. This will allow the VM to connect to the internet.")
+	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "unrestricted-networking", false, "Enable unrestricted networking. This will allow the VM to connect to the internet.")
 }

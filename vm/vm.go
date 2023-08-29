@@ -118,7 +118,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	if !cfg.UnrestrictedNetworking {
 		netdevOpts += ",restrict=on"
 	} else {
-		logger.Warn("Running with unsafe unrestricted networking")
+		logger.Warn("Running with unrestricted networking")
 	}
 
 	for _, pf := range cfg.ExtraPortForwardingRules {
@@ -267,7 +267,6 @@ func (vm *VM) Run() error {
 
 		knownHosts, err := ParseSSHKeyScan(sshKeyScan)
 		if err != nil {
-			// TODO: Test what actually happens in inline critical errors like this.
 			globalErrFn(errors.Wrap(err, "parse ssh key scan"))
 			return
 		}
