@@ -132,9 +132,7 @@ var shellCmd = &cobra.Command{
 }
 
 var forwardPortsFlagStr string
-var unrestrictedNetworkingFlag bool
 
 func init() {
-	shellCmd.Flags().BoolVar(&unrestrictedNetworkingFlag, "unsafe-unrestricted-networking", false, "(UNSAFE) Enable unrestricted networking. This will allow the VM to connect to the internet.")
 	shellCmd.Flags().StringVar(&forwardPortsFlagStr, "forward-ports", "", "Extra TCP port forwarding rules. Syntax: '<HOST PORT>:<VM PORT>' OR '<HOST BIND IP>:<HOST PORT>:<VM PORT>'. Multiple rules split by comma are accepted.")
 }

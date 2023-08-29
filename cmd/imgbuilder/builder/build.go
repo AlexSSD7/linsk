@@ -153,7 +153,7 @@ func (bc *BuildContext) BuildWithInterruptHandler() error {
 
 			bc.logger.Info("Installation in progress")
 
-			err = runAlpineSetupCmd(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "samba"})
+			err = runAlpineSetupCmd(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "vsftpd"})
 			if err != nil {
 				return errors.Wrap(err, "run alpine setup cmd")
 			}
@@ -191,7 +191,7 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 		_ = sess.Close()
 	}()
 
-	cmd := "ifconfig eth0 up && ifconfig lo up && udhcpc && true > /etc/apk/repositories && setup-apkrepos -1 && printf 'y' | setup-disk -m sys /dev/vda"
+	cmd := "ifconfig eth0 up && ifconfig lo up && udhcpc && true > /etc/apk/repositories && setup-apkrepos -c -1 && printf 'y' | setup-disk -m sys /dev/vda"
 
 	if len(pkgs) != 0 {
 		pkgsQuoted := make([]string, len(pkgs))
@@ -202,7 +202,7 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 		cmd += " && mount /dev/vda3 /mnt && chroot /mnt apk add " + strings.Join(pkgsQuoted, " ")
 	}
 
-	cmd += `&& chroot /mnt ash -c 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && addgroup -g 1000 linsk && adduser -G linsk linsk -S -u 1000'`
+	cmd += `&& chroot /mnt ash -c 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && addgroup -g 1000 linsk && adduser -D -h /mnt -G linsk linsk -u 1000'`
 
 	err = sess.Run(cmd)
 	if err != nil {

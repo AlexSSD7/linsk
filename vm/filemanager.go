@@ -203,7 +203,7 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	return nil
 }
 
-func (fm *FileManager) StartSMB(pwd []byte) error {
+func (fm *FileManager) StartFTP(pwd []byte, passivePortStart uint16, passivePortCount uint16) error {
 	scpClient, err := fm.vm.DialSCP()
 	if err != nil {
 		return errors.Wrap(err, "dial scp")
@@ -211,22 +211,22 @@ func (fm *FileManager) StartSMB(pwd []byte) error {
 
 	defer scpClient.Close()
 
-	sambaCfg := `[global]
-workgroup = WORKGROUP
-dos charset = cp866
-unix charset = utf-8
-	
-[linsk]
-browseable = yes
-writeable = yes
-path = /mnt
-force user = linsk
-force group = linsk
-create mask = 0664`
+	ftpdCfg := `anonymous_enable=NO
+local_enable=YES
+write_enable=YES
+local_umask=022
+chroot_local_user=YES
+allow_writeable_chroot=YES
+listen=YES
+seccomp_sandbox=NO
+pasv_min_port=` + fmt.Sprint(passivePortStart) + `
+pasv_max_port=` + fmt.Sprint(passivePortStart+passivePortCount) + `
+pasv_address=127.0.0.1
+`
 
-	err = scpClient.CopyFile(fm.vm.ctx, strings.NewReader(sambaCfg), "/etc/samba/smb.conf", "0400")
+	err = scpClient.CopyFile(fm.vm.ctx, strings.NewReader(ftpdCfg), "/etc/vsftpd/vsftpd.conf", "0400")
 	if err != nil {
-		return errors.Wrap(err, "copy samba config file")
+		return errors.Wrap(err, "copy ftpd .conf file")
 	}
 
 	scpClient.Close()
@@ -238,9 +238,9 @@ create mask = 0664`
 
 	defer func() { _ = sc.Close() }()
 
-	_, err = runSSHCmd(sc, "rc-update add samba && rc-service samba start")
+	_, err = runSSHCmd(sc, "rc-update add vsftpd && rc-service vsftpd start")
 	if err != nil {
-		return errors.Wrap(err, "add and start samba service")
+		return errors.Wrap(err, "add and start ftpd service")
 	}
 
 	sess, err := sc.NewSession()
@@ -260,25 +260,25 @@ create mask = 0664`
 
 	// TODO: Timeout for this command
 
-	err = sess.Start("smbpasswd -a linsk")
+	err = sess.Start("passwd linsk")
 	if err != nil {
-		return errors.Wrap(err, "start change samba password cmd")
+		return errors.Wrap(err, "start change user password cmd")
 	}
 
 	go func() {
 		_, err = stdinPipe.Write(pwd)
 		if err != nil {
-			fm.vm.logger.Error("Failed to write SMB password to smbpasswd stdin", "error", err)
+			fm.vm.logger.Error("Failed to write FTP password to passwd stdin", "error", err)
 		}
 		_, err = stdinPipe.Write(pwd)
 		if err != nil {
-			fm.vm.logger.Error("Failed to write repeated SMB password to smbpasswd stdin", "error", err)
+			fm.vm.logger.Error("Failed to write repeated FTP password to passwd stdin", "error", err)
 		}
 	}()
 
 	err = sess.Wait()
 	if err != nil {
-		return utils.WrapErrWithLog(err, "wait for change samba password cmd", stderr.String())
+		return utils.WrapErrWithLog(err, "wait for change user password cmd", stderr.String())
 	}
 
 	return nil

@@ -21,10 +21,27 @@ var runCmd = &cobra.Command{
 		vmMountDevName := args[1]
 		fsType := args[2]
 
-		networkSharePort, err := getClosestAvailPort(9000)
+		ftpPassivePortCount := uint16(9)
+
+		networkSharePort, err := getClosestAvailPortWithSubsequent(9000, 10)
 		if err != nil {
 			slog.Error("Failed to get closest available host port for network file share", "error", err)
 			os.Exit(1)
+		}
+
+		ports := []vm.PortForwardingRule{{
+			HostIP:   net.ParseIP("127.0.0.1"), // TODO: Make this changeable.
+			HostPort: networkSharePort,
+			VMPort:   21,
+		}}
+
+		for i := uint16(0); i < ftpPassivePortCount; i++ {
+			p := networkSharePort + 1 + i
+			ports = append(ports, vm.PortForwardingRule{
+				HostIP:   net.ParseIP("127.0.0.1"), // TODO: Make this changeable.
+				HostPort: p,
+				VMPort:   p,
+			})
 		}
 
 		// TODO: `slog` library prints entire stack traces for errors which makes reading errors challenging.
@@ -45,27 +62,21 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
-			// TODO: Use FTP instead of SMB
+			shareURI := "ftp://linsk:" + sharePWD + "@localhost:" + fmt.Sprint(networkSharePort)
 
-			shareURI := "smb://linsk:" + sharePWD + "@127.0.0.1:" + fmt.Sprint(networkSharePort)
+			fmt.Fprintf(os.Stderr, "================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: FTP\nServer Address: ftp://localhost:%v\nUsername: linsk\nPassword: %v\n\nShare URI: %v\n================\n", networkSharePort, sharePWD, shareURI)
 
-			fmt.Fprintf(os.Stderr, "================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: SMB\nServer Address: smb://127.0.0.1:%v\nUsername: linsk\nPassword: %v\n\nShare URI: %v\n================\n", networkSharePort, sharePWD, shareURI)
-
-			err = fm.StartSMB([]byte(sharePWD))
+			err = fm.StartFTP([]byte(sharePWD), networkSharePort+1, ftpPassivePortCount)
 			if err != nil {
-				slog.Error("Failed to start SMB server", "error", err)
+				slog.Error("Failed to start FTP server", "error", err)
 				return 1
 			}
 
-			slog.Info("Started the network share successfully", "type", "smb")
+			slog.Info("Started the network share successfully", "type", "ftp")
 
 			<-ctx.Done()
 			return 0
-		}, []vm.PortForwardingRule{{
-			HostIP:   net.ParseIP("127.0.0.1"), // TODO: Make this changeable.
-			HostPort: networkSharePort,
-			VMPort:   445,
-		}}, false))
+		}, ports, unrestrictedNetworkingFlag))
 	},
 }
 
