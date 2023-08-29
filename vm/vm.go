@@ -144,7 +144,6 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	if !cfg.ShowDisplay {
 		cmdArgs = append(cmdArgs, "-display", "none")
-
 	} else if runtime.GOARCH == "arm64" {
 		// No video is configured by default in ARM. This will enable it.
 		// TODO: This doesn't really work on arm64. It just shows a blank viewer.
@@ -174,7 +173,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	}
 
 	if len(cfg.PassthroughConfig.Block) != 0 {
-		logger.Warn("Detected raw block device passthrough, please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time")
+		logger.Warn("Detected raw block device passthrough. Please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time. Otherwise, you run serious risks. No further warnings will be issued.")
 	}
 
 	for _, dev := range cfg.PassthroughConfig.Block {
