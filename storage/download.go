@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Storage) download(url string, hash []byte, out string) error {
+func (s *Storage) download(url string, hash []byte, out string, applyReaderMiddleware func(io.Reader) io.Reader) error {
 	var created, success bool
 
 	defer func() {
@@ -51,21 +51,41 @@ func (s *Storage) download(url string, hash []byte, out string) error {
 
 	defer func() { _ = resp.Body.Close() }()
 
-	_, err = copyWithProgressAndHash(f, resp.Body, 1024, resp.ContentLength, hash, func(i int, f float64) {
-		s.logger.Info("Downloading file", "out", out, "percent", math.Round(f*100*100)/100, "size", humanize.Bytes(uint64(resp.ContentLength)))
+	knownSize := resp.ContentLength
+
+	var readFrom io.Reader
+	if applyReaderMiddleware != nil {
+		readFrom = applyReaderMiddleware(resp.Body)
+		knownSize = 0
+	} else {
+		readFrom = resp.Body
+	}
+
+	n, err := copyWithProgressAndHash(f, readFrom, 1024, hash, func(downloaded int) {
+		var percent float64
+		if knownSize != 0 {
+			percent = float64(downloaded) / float64(knownSize)
+		}
+
+		lg := s.logger.With("out", out, "done", humanize.Bytes(uint64(downloaded)))
+		if percent != 0 {
+			lg.Info("Downloading file", "percent", math.Round(percent*100*100)/100)
+		} else {
+			lg.Info("Downloading compressed file", "percent", "N/A")
+		}
 	})
 	if err != nil {
 		return errors.Wrap(err, "copy resp to file")
 	}
 
-	s.logger.Info("Successfully downloaded file", "from", url, "to", out)
+	s.logger.Info("Successfully downloaded file", "from", url, "to", out, "out-size", humanize.Bytes(uint64(n)))
 
 	success = true
 
 	return nil
 }
 
-func copyWithProgressAndHash(dst io.Writer, src io.Reader, blockSize int, length int64, wantHash []byte, report func(int, float64)) (int, error) {
+func copyWithProgressAndHash(dst io.Writer, src io.Reader, blockSize int, wantHash []byte, report func(int)) (int, error) {
 	block := make([]byte, blockSize)
 
 	var h hash.Hash
@@ -98,11 +118,7 @@ func copyWithProgressAndHash(dst io.Writer, src io.Reader, blockSize int, length
 		}
 
 		if progress%1000000 == 0 {
-			var percent float64
-			if length != 0 {
-				percent = float64(progress) / float64(length)
-			}
-			report(progress, percent)
+			report(progress)
 		}
 	}
 

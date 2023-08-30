@@ -65,6 +65,7 @@ type DriveConfig struct {
 
 type VMConfig struct {
 	CdromImagePath string
+	BIOSPath       string
 	Drives         []DriveConfig
 
 	MemoryAlloc uint32 // In KiB.
@@ -96,6 +97,10 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	cmdArgs := []string{"-serial", "stdio", "-m", fmt.Sprint(cfg.MemoryAlloc), "-smp", fmt.Sprint(runtime.NumCPU())}
 
+	if cfg.BIOSPath != "" {
+		cmdArgs = append(cmdArgs, "-bios", filepath.Clean(cfg.BIOSPath))
+	}
+
 	baseCmd := "qemu-system"
 
 	switch runtime.GOARCH {
@@ -112,8 +117,10 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		cmdArgs = append(cmdArgs, "-accel", accel)
 		baseCmd += "-x86_64"
 	case "arm64":
-		// TODO: EFI firmware path is temporary, for dev purposes only.
-		cmdArgs = append(cmdArgs, "-accel", "hvf", "-bios", "/opt/homebrew/Cellar/qemu/8.1.0/share/qemu/edk2-aarch64-code.fd", "-M", "virt,highmem=off", "-cpu", "cortex-a57")
+		if cfg.BIOSPath == "" {
+			logger.Warn("BIOS image path is not specified while attempting to run an aarch64 (arm64) VM. The VM will not boot.")
+		}
+		cmdArgs = append(cmdArgs, "-accel", "hvf", "-M", "virt,highmem=off", "-cpu", "cortex-a57")
 		baseCmd += "-aarch64"
 	default:
 		return nil, fmt.Errorf("arch '%v' is not supported", runtime.GOARCH)
