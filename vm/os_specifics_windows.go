@@ -18,3 +18,8 @@ func prepareVMCmd(cmd *exec.Cmd) {
 func terminateProcess(pid int) error {
 	return exec.Command("TASKKILL", "/T", "/F", "/PID", fmt.Sprint(pid)).Run()
 }
+
+func checkDeviceSeemsMounted(path string) (bool, error) {
+	// We do not have mount checks on Windows.
+	return false, nil
+}

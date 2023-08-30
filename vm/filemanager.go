@@ -136,7 +136,7 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 		err = sess.Wait()
 		if err != nil {
 			if strings.Contains(stderrBuf.String(), "Not enough available memory to open a keyslot.") {
-				fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag.")
+				fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag")
 			}
 
 			return utils.WrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String())

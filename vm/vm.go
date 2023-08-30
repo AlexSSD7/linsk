@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -163,7 +164,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 			return nil, errors.Wrapf(err, "stat extra drive #%v path", i)
 		}
 
-		driveArgs := "file=" + shellescape.Quote(extraDrive.Path) + ",format=qcow2,if=none,id=disk" + fmt.Sprint(i)
+		driveArgs := "file=" + shellescape.Quote(strings.ReplaceAll(extraDrive.Path, "\\", "/")) + ",format=qcow2,if=none,id=disk" + fmt.Sprint(i)
 		if extraDrive.SnapshotMode {
 			driveArgs += ",snapshot=on"
 		}
