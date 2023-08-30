@@ -7,7 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -237,4 +240,62 @@ func getClosestAvailPortWithSubsequent(port uint16, subsequent uint16) (uint16, 
 	}
 
 	return 0, fmt.Errorf("no available port (with %v subsequent ones) found", subsequent)
+}
+
+func getDevicePassthroughConfig(val string) vm.PassthroughConfig {
+	valSplit := strings.Split(val, ":")
+	if want, have := 2, len(valSplit); want != have {
+		slog.Error("Bad device passthrough syntax", "error", fmt.Errorf("wrong items split by ':' count: want %v, have %v", want, have))
+		os.Exit(1)
+	}
+
+	switch valSplit[0] {
+	case "usb":
+		usbValsSplit := strings.Split(valSplit[1], ",")
+		if want, have := 2, len(usbValsSplit); want != have {
+			slog.Error("Bad USB device passthrough syntax", "error", fmt.Errorf("wrong args split by ',' count: want %v, have %v", want, have))
+			os.Exit(1)
+		}
+
+		vendorID, err := strconv.ParseUint(usbValsSplit[0], 16, 32)
+		if err != nil {
+			slog.Error("Bad USB vendor ID", "value", usbValsSplit[0])
+			os.Exit(1)
+		}
+
+		productID, err := strconv.ParseUint(usbValsSplit[1], 16, 32)
+		if err != nil {
+			slog.Error("Bad USB product ID", "value", usbValsSplit[1])
+			os.Exit(1)
+		}
+
+		return vm.PassthroughConfig{
+			USB: []vm.USBDevicePassthroughConfig{{
+				VendorID:  uint16(vendorID),
+				ProductID: uint16(productID),
+			}},
+		}
+	case "dev":
+		devPath := filepath.Clean(valSplit[1])
+		stat, err := os.Stat(devPath)
+		if err != nil {
+			slog.Error("Failed to stat the device path", "error", err.Error(), "path", devPath)
+			os.Exit(1)
+		}
+
+		isDev := stat.Mode()&os.ModeDevice != 0
+		if !isDev {
+			slog.Error("Provided path is not a path to a valid block device", "path", devPath, "file-mode", stat.Mode())
+			os.Exit(1)
+		}
+
+		return vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
+			Path: devPath,
+		}}}
+	default:
+		slog.Error("Unknown device passthrough type", "value", valSplit[0])
+		os.Exit(1)
+		// This unreachable code is required to compile.
+		return vm.PassthroughConfig{}
+	}
 }
