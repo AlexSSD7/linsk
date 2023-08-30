@@ -306,7 +306,7 @@ func (vm *VM) Run() error {
 	go func() {
 		select {
 		case <-time.After(vm.osUpTimeout):
-			vm.logger.Warn("A VM boot timeout detected, consider running with --vmdebug to investigate")
+			vm.logger.Warn("A VM boot timeout detected, consider running with --vm-debug to investigate")
 			globalErrFn(fmt.Errorf("vm boot timeout %v", utils.GetLogErrMsg(string(vm.consumeSerialStdout()), "serial log")))
 		case <-bootReadyCh:
 			vm.logger.Info("The VM is up, setting it up")
