@@ -66,9 +66,15 @@ func createStore() *storage.Storage {
 
 func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
 	store := createStore()
-	_, err := store.ValidateImageHashOrDownload()
+
+	vmImagePath, err := store.CheckVMImageExists()
 	if err != nil {
-		slog.Error("Failed to validate image hash or download image", "error", err.Error())
+		slog.Error("Failed to check whether VM image exists", "error", err.Error())
+		os.Exit(1)
+	}
+
+	if vmImagePath == "" {
+		slog.Error("VM image does not exist. You need to build it first before attempting to start Linsk. Please run `linsk build` first.")
 		os.Exit(1)
 	}
 
@@ -81,7 +87,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 	vmCfg := vm.VMConfig{
 		Drives: []vm.DriveConfig{{
-			Path:         store.GetLocalImagePath(),
+			Path:         vmImagePath,
 			SnapshotMode: true,
 		}},
 

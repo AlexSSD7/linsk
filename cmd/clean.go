@@ -12,11 +12,12 @@ import (
 
 var cleanCmd = &cobra.Command{
 	Use:   "clean",
-	Short: "Remove all downloaded VM images.",
+	Short: "Remove the Linsk data directory.",
 	Run: func(cmd *cobra.Command, args []string) {
 		store := createStore()
 
-		fmt.Fprintf(os.Stderr, "Will delete all VM images in the data directory. Proceed? (y/n) > ")
+		rmPath := store.DataDirPath()
+		fmt.Fprintf(os.Stderr, "Will permanently remove '"+rmPath+"'. Proceed? (y/n) > ")
 
 		reader := bufio.NewReader(os.Stdin)
 		answer, err := reader.ReadBytes('\n')
@@ -30,12 +31,12 @@ var cleanCmd = &cobra.Command{
 			os.Exit(2)
 		}
 
-		deleted, err := store.CleanImages(false)
+		err = os.RemoveAll(rmPath)
 		if err != nil {
-			slog.Error("Failed to clean images", "error", err.Error())
+			slog.Error("Failed to remove all", "error", err.Error(), "path", rmPath)
 			os.Exit(1)
 		}
 
-		slog.Info("Successful VM image cleanup", "deleted", deleted)
+		slog.Info("Deleted data directory", "path", rmPath)
 	},
 }

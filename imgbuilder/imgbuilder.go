@@ -1,4 +1,4 @@
-package builder
+package imgbuilder
 
 import (
 	"bytes"
@@ -152,7 +152,7 @@ func (bc *BuildContext) BuildWithInterruptHandler() error {
 
 			defer func() { _ = sc.Close() }()
 
-			bc.logger.Info("Installation in progress")
+			bc.logger.Info("VM OS installation in progress")
 
 			err = runAlpineSetupCmd(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "vsftpd"})
 			if err != nil {
