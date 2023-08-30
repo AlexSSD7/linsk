@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -39,6 +40,35 @@ func NewStorage(logger *slog.Logger, dataDir string) (*Storage, error) {
 
 		path: dataDir,
 	}, nil
+}
+
+func (s *Storage) CleanImages(retainLatest bool) (int, error) {
+	dirEntries, err := os.ReadDir(s.path)
+	if err != nil {
+		return 0, errors.Wrap(err, "read dir")
+	}
+
+	localImagePath := s.GetLocalImagePath()
+
+	var deleted int
+
+	for _, entry := range dirEntries {
+		fullPath := filepath.Join(s.path, entry.Name())
+		if !strings.HasSuffix(fullPath, ".qcow2") {
+			continue
+		}
+
+		if !(retainLatest && fullPath == localImagePath) {
+			s.logger.Warn("Removing VM image", "path", fullPath)
+			err = os.Remove(fullPath)
+			if err != nil {
+				return deleted, errors.Wrapf(err, "remove vm image (path '%v')", fullPath)
+			}
+			deleted++
+		}
+	}
+
+	return deleted, nil
 }
 
 func (s *Storage) GetLocalImagePath() string {
@@ -143,16 +173,29 @@ func (s *Storage) ValidateImageHash() error {
 }
 
 func (s *Storage) ValidateImageHashOrDownload() (bool, error) {
+	var downloaded bool
 	err := s.ValidateImageHash()
-	if err == nil {
-		return false, nil
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			err = s.DownloadImage()
+			if err != nil {
+				return false, errors.Wrap(err, "download iamge")
+			}
+
+			downloaded = true
+		} else {
+			return false, errors.Wrap(err, "validate image hash")
+		}
 	}
 
-	if errors.Is(err, os.ErrNotExist) {
-		return true, errors.Wrap(s.DownloadImage(), "download image")
+	deletedImagesCount, err := s.CleanImages(true)
+	if err != nil {
+		s.logger.Warn("Failed to prune old VM images", "error", err, "deleted", deletedImagesCount)
+	} else {
+		s.logger.Info("Pruned old VM images", "deleted", deletedImagesCount)
 	}
 
-	return false, err
+	return downloaded, err
 }
 
 func copyWithProgress(dst io.Writer, src io.Reader, blockSize int, length int64, report func(int, float64)) (int, error) {

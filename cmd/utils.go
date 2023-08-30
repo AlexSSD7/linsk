@@ -54,14 +54,19 @@ func doUSBRootCheck() {
 	}
 }
 
-func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
+func createStore() *storage.Storage {
 	store, err := storage.NewStorage(slog.With("caller", "storage"), dataDirFlag)
 	if err != nil {
 		slog.Error("Failed to create Linsk data storage", "error", err.Error(), "data-dir", dataDirFlag)
 		os.Exit(1)
 	}
 
-	_, err = store.ValidateImageHashOrDownload()
+	return store
+}
+
+func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
+	store := createStore()
+	_, err := store.ValidateImageHashOrDownload()
 	if err != nil {
 		slog.Error("Failed to validate image hash or download image", "error", err.Error())
 		os.Exit(1)
@@ -92,7 +97,6 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		ShowDisplay:            vmDebugFlag,
 	}
 
-	// TODO: Alpine image should be downloaded from somewhere.
 	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)
 	if err != nil {
 		slog.Error("Failed to create vm instance", "error", err.Error())
