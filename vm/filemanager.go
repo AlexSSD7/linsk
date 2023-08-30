@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -195,7 +196,7 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	return nil
 }
 
-func (fm *FileManager) StartFTP(pwd string, passivePortStart uint16, passivePortCount uint16) error {
+func (fm *FileManager) StartFTP(pwd string, passivePortStart uint16, passivePortCount uint16, extIP net.IP) error {
 	// This timeout is for the SCP client exclusively.
 	scpCtx, scpCtxCancel := context.WithTimeout(fm.vm.ctx, time.Second*5)
 	defer scpCtxCancel()
@@ -217,7 +218,7 @@ listen=YES
 seccomp_sandbox=NO
 pasv_min_port=` + fmt.Sprint(passivePortStart) + `
 pasv_max_port=` + fmt.Sprint(passivePortStart+passivePortCount) + `
-pasv_address=127.0.0.1
+pasv_address=` + extIP.String() + `
 `
 
 	err = scpClient.CopyFile(scpCtx, strings.NewReader(ftpdCfg), "/etc/vsftpd/vsftpd.conf", "0400")

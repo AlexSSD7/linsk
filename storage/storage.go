@@ -93,7 +93,19 @@ func (s *Storage) BuildVMImageWithInterruptHandler(showBuilderVMDisplay bool, ov
 		return errors.Wrap(err, "create new img build context")
 	}
 
-	return errors.Wrap(buildCtx.BuildWithInterruptHandler(), "build")
+	err = buildCtx.BuildWithInterruptHandler()
+	if err != nil {
+		return errors.Wrap(err, "do build")
+	}
+
+	err = os.Remove(baseImagePath)
+	if err != nil {
+		s.logger.Error("Failed to remove base image", "error", err.Error(), "path", baseImagePath)
+	} else {
+		s.logger.Info("Removed base image", "path", baseImagePath)
+	}
+
+	return nil
 }
 
 func (s *Storage) CheckVMImageExists() (string, error) {

@@ -63,5 +63,5 @@ func init() {
 		defaultDataDir = filepath.Join(homeDir, homeDirName)
 	}
 
-	rootCmd.PersistentFlags().StringVar(&dataDirFlag, "data-dir", defaultDataDir, "Specifies the data directory (folder) to use. The VM images will be stored here.")
+	rootCmd.PersistentFlags().StringVarP(&dataDirFlag, "data-dir", "d", defaultDataDir, "Specifies the data directory (folder) to use. VM images and related work files will be stored here.")
 }

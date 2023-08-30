@@ -204,7 +204,7 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 		cmd += " && mount /dev/vda3 /mnt && chroot /mnt apk add " + strings.Join(pkgsQuoted, " ")
 	}
 
-	cmd += `&& chroot /mnt ash -c 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && addgroup -g 1000 linsk && adduser -D -h /mnt -G linsk linsk -u 1000'`
+	cmd += `&& chroot /mnt ash -c 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && addgroup -g 1000 linsk && adduser -D -h /mnt -G linsk linsk -u 1000 && touch /etc/network/interfaces'`
 
 	err = sess.Run(cmd)
 	if err != nil {
