@@ -19,7 +19,7 @@ var alpineBaseImageHash []byte
 func init() {
 	baseAlpineArch = "x86_64"
 	alpineBaseImageHash = utils.MustDecodeHex("925f6bc1039a0abcd0548d2c3054d54dce31cfa03c7eeba22d10d85dc5817c98")
-	if runtime.GOOS == "arm64" {
+	if runtime.GOARCH == "arm64" {
 		baseAlpineArch = "aarch64"
 		alpineBaseImageHash = utils.MustDecodeHex("c94593729e4577650d9e73ada28e3cbe56964ab2a27240364f8616e920ed6d4e")
 	}

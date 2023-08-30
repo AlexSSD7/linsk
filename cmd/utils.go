@@ -78,6 +78,12 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		os.Exit(1)
 	}
 
+	biosPath, err := store.CheckDownloadVMBIOS()
+	if err != nil {
+		slog.Error("Failed to check/download VM BIOS", "error", err)
+		os.Exit(1)
+	}
+
 	var passthroughConfig vm.PassthroughConfig
 
 	if passthroughArg != "" {
@@ -92,6 +98,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		}},
 
 		MemoryAlloc: vmMemAllocFlag,
+		BIOSPath:    biosPath,
 
 		PassthroughConfig:        passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,

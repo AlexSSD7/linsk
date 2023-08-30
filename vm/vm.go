@@ -168,7 +168,13 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 			driveArgs += ",snapshot=on"
 		}
 
-		cmdArgs = append(cmdArgs, "-drive", driveArgs, "-device", "virtio-blk-pci,drive=disk"+fmt.Sprint(i)+",bootindex="+fmt.Sprint(i))
+		devArgs := "virtio-blk-pci,drive=disk" + fmt.Sprint(i)
+
+		if cfg.CdromImagePath == "" {
+			devArgs += ",bootindex=" + fmt.Sprint(i)
+		}
+
+		cmdArgs = append(cmdArgs, "-drive", driveArgs, "-device", devArgs)
 	}
 
 	if len(cfg.PassthroughConfig.USB) != 0 {

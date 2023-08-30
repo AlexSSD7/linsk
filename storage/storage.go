@@ -81,9 +81,9 @@ func (s *Storage) BuildVMImageWithInterruptHandler(showBuilderVMDisplay bool, ov
 		return errors.Wrap(err, "check/download base image")
 	}
 
-	biosPath, err := s.CheckDownloadCPUArchSpecifics()
+	biosPath, err := s.CheckDownloadVMBIOS()
 	if err != nil {
-		return errors.Wrap(err, "check/download cpu arch specifics")
+		return errors.Wrap(err, "check/download vm bios")
 	}
 
 	s.logger.Info("Building VM image", "tags", constants.GetAlpineBaseImageTags(), "overwriting", removed, "dst", vmImagePath)
@@ -116,7 +116,7 @@ func (s *Storage) DataDirPath() string {
 	return s.path
 }
 
-func (s *Storage) CheckDownloadCPUArchSpecifics() (string, error) {
+func (s *Storage) CheckDownloadVMBIOS() (string, error) {
 	if runtime.GOARCH == "arm64" {
 		p, err := s.CheckDownloadAarch64EFIImage()
 		if err != nil {
@@ -125,6 +125,8 @@ func (s *Storage) CheckDownloadCPUArchSpecifics() (string, error) {
 
 		return p, nil
 	}
+
+	// On x86_64, there is no requirement to supply QEMU with any BIOS images.
 
 	return "", nil
 }
