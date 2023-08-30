@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"log/slog"
 
@@ -29,6 +31,7 @@ var unrestrictedNetworkingFlag bool
 var vmMemAllocFlag uint32
 var vmSSHSetupTimeoutFlag uint32
 var vmOSUpTimeoutFlag uint32
+var dataDirFlag string
 
 // TODO: Version command.
 
@@ -44,4 +47,20 @@ func init() {
 	rootCmd.PersistentFlags().Uint32Var(&vmMemAllocFlag, "vm-mem-alloc", 512, "Specifies the VM memory allocation in KiB")
 	rootCmd.PersistentFlags().Uint32Var(&vmOSUpTimeoutFlag, "vm-os-up-timeout", 30, "Specifies the VM OS-up timeout in seconds.")
 	rootCmd.PersistentFlags().Uint32Var(&vmSSHSetupTimeoutFlag, "vm-ssh-setup-timeout", 60, "Specifies the VM SSH server setup timeout in seconds. This cannot be lower than the OS-up timeout.")
+
+	defaultDataDir := "linsk-data-dir"
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		slog.Error("Failed to get user home directory, will use a local directory as a fallback", "error", err.Error(), "dir", defaultDataDir)
+	} else {
+		homeDirName := ".linsk"
+		if runtime.GOOS == "windows" {
+			homeDirName = "Linsk"
+		}
+
+		defaultDataDir = filepath.Join(homeDir, homeDirName)
+	}
+
+	rootCmd.PersistentFlags().StringVar(&dataDirFlag, "data-dir", defaultDataDir, "Specifies the data directory (folder) to use. The VM images will be stored here.")
 }

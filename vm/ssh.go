@@ -53,25 +53,28 @@ func ParseSSHKeyScan(knownHosts []byte) (ssh.HostKeyCallback, error) {
 func (vm *VM) scanSSHIdentity() ([]byte, error) {
 	vm.resetSerialStdout()
 
-	err := vm.writeSerial([]byte(`ssh-keyscan -H localhost; echo "SERIAL STATUS: $?"; rm /root/.ash_history` + "\n"))
+	err := vm.writeSerial([]byte(`ssh-keyscan -H 127.0.0.1 && echo "SERIAL STATUS: $?" && rm /root/.ash_history` + "\n"))
 	if err != nil {
 		return nil, errors.Wrap(err, "write keyscan command to serial")
 	}
 
 	deadline := time.Now().Add(time.Second * 5)
 
-	var ret bytes.Buffer
+	stdOutErrBuf := bytes.NewBuffer(nil)
+	ret := bytes.NewBuffer(nil)
 
 	for {
 		select {
 		case <-vm.ctx.Done():
 			return nil, vm.ctx.Err()
 		case <-time.After(time.Until(deadline)):
-			return nil, fmt.Errorf("keyscan command timed out")
+			return nil, fmt.Errorf("keyscan command timed out %v", utils.GetLogErrMsg(stdOutErrBuf.String(), "stdout/stderr log"))
 		case data := <-vm.serialStdoutCh:
 			if len(data) == 0 {
 				continue
 			}
+
+			stdOutErrBuf.Write(data)
 
 			// This isn't clean at all, but there is no better
 			// way to achieve an exit status check like this.
@@ -82,7 +85,7 @@ func (vm *VM) scanSSHIdentity() ([]byte, error) {
 				}
 
 				if data[len(prefix)] != '0' {
-					return nil, fmt.Errorf("non-zero keyscan command status code: '%v'", string(data[len(prefix)]))
+					return nil, fmt.Errorf("non-zero keyscan command status code: '%v' %v", string(data[len(prefix)]), utils.GetLogErrMsg(stdOutErrBuf.String(), "stdout/stderr log"))
 				}
 
 				return ret.Bytes(), nil
@@ -103,10 +106,10 @@ func (vm *VM) sshSetup() (ssh.Signer, error) {
 
 	installSSHDCmd := ""
 	if vm.installSSH {
-		installSSHDCmd = "ifconfig eth0 up && ifconfig lo up && udhcpc; apk add openssh; "
+		installSSHDCmd = "apk add openssh; "
 	}
 
-	cmd := `do_setup () { sh -c "set -ex; ` + installSSHDCmd + `mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
+	cmd := `do_setup () { sh -c "set -ex; ifconfig eth0 up && ifconfig lo up && udhcpc; ` + installSSHDCmd + `mkdir -p ~/.ssh; echo ` + shellescape.Quote(string(sshPublicKey)) + ` > ~/.ssh/authorized_keys; rc-update add sshd; rc-service sshd start"; echo "SERIAL"" ""STATUS: $?"; }; do_setup` + "\n"
 
 	err = vm.writeSerial([]byte(cmd))
 	if err != nil {

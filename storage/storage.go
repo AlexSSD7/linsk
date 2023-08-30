@@ -18,7 +18,7 @@ import (
 
 const imageURL = "http://localhost:8000/linsk-base.qcow2"
 
-var imageHash = [64]byte{96, 134, 26, 122, 43, 140, 212, 78, 44, 123, 103, 209, 21, 36, 81, 152, 9, 177, 47, 114, 225, 117, 64, 198, 50, 151, 71, 100, 1, 92, 106, 24, 224, 254, 157, 125, 188, 118, 84, 200, 47, 11, 215, 252, 100, 173, 64, 202, 132, 110, 15, 240, 234, 223, 56, 125, 94, 94, 179, 39, 193, 215, 41, 109}
+var imageHash = [64]byte{70, 23, 243, 131, 146, 197, 41, 223, 67, 223, 41, 243, 128, 147, 82, 238, 34, 24, 123, 246, 251, 117, 120, 72, 72, 64, 96, 146, 227, 199, 49, 169, 164, 33, 205, 217, 98, 255, 109, 18, 130, 203, 126, 83, 34, 4, 229, 108, 173, 22, 107, 37, 181, 17, 84, 13, 129, 110, 25, 126, 158, 50, 135, 9}
 
 type Storage struct {
 	logger *slog.Logger
@@ -41,12 +41,12 @@ func NewStorage(logger *slog.Logger, dataDir string) (*Storage, error) {
 	}, nil
 }
 
-func (s *Storage) getLocalImagePath() string {
+func (s *Storage) GetLocalImagePath() string {
 	return filepath.Join(s.path, hex.EncodeToString(imageHash[:])+".qcow2")
 }
 
 func (s *Storage) DownloadImage() error {
-	localImagePath := s.getLocalImagePath()
+	localImagePath := s.GetLocalImagePath()
 
 	var created, success bool
 
@@ -77,6 +77,8 @@ func (s *Storage) DownloadImage() error {
 
 	defer func() { _ = f.Close() }()
 
+	s.logger.Info("Starting to download the VM image", "path", localImagePath)
+
 	resp, err := http.Get(imageURL)
 	if err != nil {
 		return errors.Wrap(err, "http get image")
@@ -85,7 +87,7 @@ func (s *Storage) DownloadImage() error {
 	defer func() { _ = resp.Body.Close() }()
 
 	_, err = copyWithProgress(f, resp.Body, 1024, resp.ContentLength, func(i int, f float64) {
-		s.logger.Info("Downloading image", "url", imageURL, "percent", math.Round(f*100*100)/100, "content-length", humanize.Bytes(uint64(resp.ContentLength)))
+		s.logger.Info("Downloading the VM image", "url", imageURL, "percent", math.Round(f*100*100)/100, "content-length", humanize.Bytes(uint64(resp.ContentLength)))
 	})
 	if err != nil {
 		return errors.Wrap(err, "copy resp to file")
@@ -96,13 +98,15 @@ func (s *Storage) DownloadImage() error {
 		return errors.Wrap(err, "validate image hash")
 	}
 
+	s.logger.Info("Successfully downloaded the VM image", "dst", localImagePath)
+
 	success = true
 
 	return nil
 }
 
 func (s *Storage) ValidateImageHash() error {
-	localImagePath := s.getLocalImagePath()
+	localImagePath := s.GetLocalImagePath()
 
 	f, err := os.OpenFile(localImagePath, os.O_RDONLY, 0400)
 	if err != nil {
@@ -133,7 +137,22 @@ func (s *Storage) ValidateImageHash() error {
 		return fmt.Errorf("hash mismatch: want '%v', have '%v'", hex.EncodeToString(imageHash[:]), hex.EncodeToString(sum))
 	}
 
+	s.logger.Info("Validated the VM image hash", "path", localImagePath)
+
 	return nil
+}
+
+func (s *Storage) ValidateImageHashOrDownload() (bool, error) {
+	err := s.ValidateImageHash()
+	if err == nil {
+		return false, nil
+	}
+
+	if errors.Is(err, os.ErrNotExist) {
+		return true, errors.Wrap(s.DownloadImage(), "download image")
+	}
+
+	return false, err
 }
 
 func copyWithProgress(dst io.Writer, src io.Reader, blockSize int, length int64, report func(int, float64)) (int, error) {

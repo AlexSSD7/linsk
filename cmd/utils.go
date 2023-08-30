@@ -14,6 +14,7 @@ import (
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/storage"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
 )
@@ -51,6 +52,18 @@ func doUSBRootCheck() {
 }
 
 func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
+	store, err := storage.NewStorage(slog.With("caller", "storage"), dataDirFlag)
+	if err != nil {
+		slog.Error("Failed to create Linsk data storage", "error", err.Error(), "data-dir", dataDirFlag)
+		os.Exit(1)
+	}
+
+	_, err = store.ValidateImageHashOrDownload()
+	if err != nil {
+		slog.Error("Failed to validate image hash or download image", "error", err.Error())
+		os.Exit(1)
+	}
+
 	var passthroughConfig vm.PassthroughConfig
 
 	if passthroughArg != "" {
@@ -60,7 +73,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 	vmCfg := vm.VMConfig{
 		Drives: []vm.DriveConfig{{
-			Path:         "alpine.qcow2",
+			Path:         store.GetLocalImagePath(),
 			SnapshotMode: true,
 		}},
 
