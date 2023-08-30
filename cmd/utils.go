@@ -32,9 +32,6 @@ func checkIfRoot() (bool, error) {
 
 func doUSBRootCheck() {
 	switch runtime.GOOS {
-	case "darwin":
-		// Root privileges is not required in macOS.
-		return
 	case "windows":
 		// Administrator privileges are not required in Windows.
 		return
