@@ -33,8 +33,6 @@ var vmSSHSetupTimeoutFlag uint32
 var vmOSUpTimeoutFlag uint32
 var dataDirFlag string
 
-// TODO: Version command.
-
 func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 
@@ -43,6 +41,7 @@ func init() {
 	rootCmd.AddCommand(shellCmd)
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(buildCmd)
+	rootCmd.AddCommand(versionCmd)
 
 	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vm-debug", false, "Enables the VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
 	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "vm-unrestricted-networking", false, "Enables unrestricted networking. This will allow the VM to connect to the internet.")
