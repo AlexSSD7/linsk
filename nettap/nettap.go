@@ -19,6 +19,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func Available() bool {
+	return true
+}
+
 type TapManager struct {
 	logger *slog.Logger
 

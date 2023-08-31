@@ -75,7 +75,7 @@ var runCmd = &cobra.Command{
 
 			slog.Info("Started the network share successfully", "type", "ftp")
 
-			fmt.Fprintf(os.Stderr, "============================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
+			fmt.Fprintf(os.Stderr, "===========================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
 
 			<-ctx.Done()
 			return 0
