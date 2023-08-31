@@ -11,7 +11,7 @@ var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build (set up) a VM image for local use. This needs to be run after the initial installation.",
 	Run: func(cmd *cobra.Command, args []string) {
-		store := createStore()
+		store := createStoreOrExit()
 
 		err := store.BuildVMImageWithInterruptHandler(vmDebugFlag, buildOverwriteFlag)
 		if err != nil {

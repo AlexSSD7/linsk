@@ -16,7 +16,7 @@ var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Remove the Linsk data directory.",
 	Run: func(cmd *cobra.Command, args []string) {
-		store := createStore()
+		store := createStoreOrExit()
 
 		if nettap.Available() {
 			tm, err := nettap.NewTapManager(slog.With("caller", "nettap-manager"))

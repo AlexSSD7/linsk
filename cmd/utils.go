@@ -52,7 +52,7 @@ func doUSBRootCheck() {
 	}
 }
 
-func createStore() *storage.Storage {
+func createStoreOrExit() *storage.Storage {
 	store, err := storage.NewStorage(slog.With("caller", "storage"), dataDirFlag)
 	if err != nil {
 		slog.Error("Failed to create Linsk data storage", "error", err.Error(), "data-dir", dataDirFlag)
@@ -63,29 +63,36 @@ func createStore() *storage.Storage {
 }
 
 func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager, *share.NetTapRuntimeContext) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool, withNetTap bool) int {
-	store := createStore()
+	store := createStoreOrExit()
 
 	vmImagePath, err := store.CheckVMImageExists()
 	if err != nil {
 		slog.Error("Failed to check whether VM image exists", "error", err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	if vmImagePath == "" {
 		slog.Error("VM image does not exist. You need to build it first before attempting to start Linsk. Please run `linsk build` first.")
-		os.Exit(1)
+		return 1
 	}
 
 	biosPath, err := store.CheckDownloadVMBIOS()
 	if err != nil {
 		slog.Error("Failed to check/download VM BIOS", "error", err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	var passthroughConfig vm.PassthroughConfig
 
 	if passthroughArg != "" {
-		passthroughConfig = getDevicePassthroughConfig(passthroughArg)
+		passthroughConfigPtr, err := getDevicePassthroughConfig(passthroughArg)
+		if err != nil {
+			slog.Error("Failed to get device passthrough config", "error", err.Error())
+			return 1
+		}
+
+		passthroughConfig = *passthroughConfigPtr
+
 		doUSBRootCheck()
 	}
 
@@ -96,14 +103,14 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		tapManager, err := nettap.NewTapManager(slog.With("caller", "nettap-manager"))
 		if err != nil {
 			slog.Error("Failed to create new network tap manager", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		tapNameToUse := nettap.NewRandomTapName()
 		knownAllocs, err := store.ListNetTapAllocations()
 		if err != nil {
 			slog.Error("Failed to list net tap allocations", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		removedTaps, err := tapManager.PruneTaps(knownAllocs)
@@ -122,36 +129,49 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		err = store.SaveNetTapAllocation(tapNameToUse, os.Getpid())
 		if err != nil {
 			slog.Error("Failed to save net tap allocation", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		tapManager, err = nettap.NewTapManager(slog.Default())
 		if err != nil {
 			slog.Error("Failed to create net tap manager", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		err = tapManager.CreateNewTap(tapNameToUse)
 		if err != nil {
 			releaseErr := store.ReleaseNetTapAllocation(tapNameToUse)
 			if releaseErr != nil {
-				slog.Error("Failed to release net tap allocation", "error", releaseErr.Error(), "tapname", tapNameToUse)
+				slog.Error("Failed to release net tap allocation", "error", releaseErr.Error(), "tap-name", tapNameToUse)
+				// Non-critical error.
 			}
 
 			slog.Error("Failed to create new tap", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
+
+		defer func() {
+			err := tapManager.DeleteTap(tapNameToUse)
+			if err != nil {
+				slog.Error("Failed to clean up net tap", "error", err.Error(), "tap-name", tapNameToUse)
+			} else {
+				err = store.ReleaseNetTapAllocation(tapNameToUse)
+				if err != nil {
+					slog.Error("Failed to release net tap allocation", "error", err.Error(), "tap-name", tapNameToUse)
+				}
+			}
+		}()
 
 		tapNet, err := nettap.GenerateNet()
 		if err != nil {
 			slog.Error("Failed to generate tap net plan", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		err = tapManager.ConfigureNet(tapNameToUse, tapNet.HostCIDR)
 		if err != nil {
 			slog.Error("Failed to configure tap net", "error", err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		tapRuntimeCtx = &share.NetTapRuntimeContext{
@@ -163,8 +183,6 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		tapsConfig = []vm.TapConfig{{
 			Name: tapNameToUse,
 		}}
-
-		// TODO: Clean the tap up before exiting.
 	}
 
 	vmCfg := vm.VMConfig{
@@ -191,7 +209,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)
 	if err != nil {
 		slog.Error("Failed to create vm instance", "error", err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	runErrCh := make(chan error, 1)
@@ -247,12 +265,12 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			}
 
 			slog.Error("Failed to start the VM", "error", err.Error())
-			os.Exit(1)
+			return 1
 		case <-vi.SSHUpNotifyChan():
 			err := fm.Init()
 			if err != nil {
 				slog.Error("Failed to initialize File Manager", "error", err.Error())
-				os.Exit(1)
+				return 1
 			}
 
 			startupFailed := false
@@ -276,7 +294,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			err = vi.Cancel()
 			if err != nil {
 				slog.Error("Failed to cancel VM context", "error", err.Error())
-				os.Exit(1)
+				return 1
 			}
 
 			wg.Wait()
@@ -285,7 +303,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			case err := <-runErrCh:
 				if err != nil {
 					slog.Error("Failed to run the VM", "error", err.Error())
-					os.Exit(1)
+					return 1
 				}
 			default:
 			}
@@ -295,61 +313,52 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	}
 }
 
-func getDevicePassthroughConfig(val string) vm.PassthroughConfig {
+func getDevicePassthroughConfig(val string) (*vm.PassthroughConfig, error) {
 	valSplit := strings.Split(val, ":")
 	if want, have := 2, len(valSplit); want != have {
-		slog.Error("Bad device passthrough syntax", "error", fmt.Errorf("wrong items split by ':' count: want %v, have %v", want, have))
-		os.Exit(1)
+		return nil, fmt.Errorf("bad device passthrough syntax: wrong items split by ':' count: want %v, have %v", want, have)
 	}
 
 	switch valSplit[0] {
 	case "usb":
 		usbValsSplit := strings.Split(valSplit[1], ",")
 		if want, have := 2, len(usbValsSplit); want != have {
-			slog.Error("Bad USB device passthrough syntax", "error", fmt.Errorf("wrong args split by ',' count: want %v, have %v", want, have))
-			os.Exit(1)
+			return nil, fmt.Errorf("bad usb device passthrough syntax: wrong args split by ',' count: want %v, have %v", want, have)
 		}
 
 		vendorID, err := strconv.ParseUint(usbValsSplit[0], 16, 32)
 		if err != nil {
-			slog.Error("Bad USB vendor ID", "value", usbValsSplit[0])
-			os.Exit(1)
+			return nil, fmt.Errorf("bad usb vendor id '%v'", usbValsSplit[0])
 		}
 
 		productID, err := strconv.ParseUint(usbValsSplit[1], 16, 32)
 		if err != nil {
-			slog.Error("Bad USB product ID", "value", usbValsSplit[1])
-			os.Exit(1)
+			return nil, fmt.Errorf("bad usb product id '%v'", usbValsSplit[1])
 		}
 
-		return vm.PassthroughConfig{
+		return &vm.PassthroughConfig{
 			USB: []vm.USBDevicePassthroughConfig{{
 				VendorID:  uint16(vendorID),
 				ProductID: uint16(productID),
 			}},
-		}
+		}, nil
 	case "dev":
 		devPath := filepath.Clean(valSplit[1])
 		// TODO: This is for Linux only. Should support Windows as well.
 		// stat, err := os.Stat(devPath)
 		// if err != nil {
 		// 	slog.Error("Failed to stat the device path", "error", err.Error(), "path", devPath)
-		// 	os.Exit(1)
 		// }
 
 		// isDev := stat.Mode()&os.ModeDevice != 0
 		// if !isDev {
 		// 	slog.Error("Provided path is not a path to a valid block device", "path", devPath, "file-mode", stat.Mode())
-		// 	os.Exit(1)
 		// }
 
-		return vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
+		return &vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
 			Path: devPath,
-		}}}
+		}}}, nil
 	default:
-		slog.Error("Unknown device passthrough type", "value", valSplit[0])
-		os.Exit(1)
-		// This unreachable code is required to compile.
-		return vm.PassthroughConfig{}
+		return nil, fmt.Errorf("unknown device passthrough type '%v'", val)
 	}
 }
