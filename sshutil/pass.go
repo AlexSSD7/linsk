@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func ChangeUnixPass(ctx context.Context, sc *ssh.Client, user string, pwd string) error {
+func genericChangePass(ctx context.Context, sc *ssh.Client, user string, pwd string, cmd string) error {
 	if !utils.ValidateUnixUsername(user) {
 		return fmt.Errorf("invalid unix username")
 	}
@@ -27,7 +27,7 @@ func ChangeUnixPass(ctx context.Context, sc *ssh.Client, user string, pwd string
 			return errors.Wrap(err, "stdin pipe")
 		}
 
-		err = sess.Start("passwd " + shellescape.Quote(user))
+		err = sess.Start(cmd + " " + shellescape.Quote(user))
 		if err != nil {
 			return errors.Wrap(err, "start change user password cmd")
 		}
@@ -54,4 +54,12 @@ func ChangeUnixPass(ctx context.Context, sc *ssh.Client, user string, pwd string
 
 		return nil
 	})
+}
+
+func ChangeUnixPass(ctx context.Context, sc *ssh.Client, user string, pwd string) error {
+	return genericChangePass(ctx, sc, user, pwd, "passwd")
+}
+
+func ChangeSambaPass(ctx context.Context, sc *ssh.Client, user string, pwd string) error {
+	return genericChangePass(ctx, sc, user, pwd, "smbpasswd -a")
 }
