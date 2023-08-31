@@ -222,7 +222,6 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	for _, dev := range cfg.PassthroughConfig.Block {
 		// It's always a user's responsibility to ensure that no drives are mounted
 		// in both host and guest system. This should serve as the last resort.
-		// TODO: Windows support.
 		{
 			seemsMounted, err := checkDeviceSeemsMounted(dev.Path)
 			if err != nil {
