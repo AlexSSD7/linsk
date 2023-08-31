@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ var lsCmd = &cobra.Command{
 	Short: "Start a VM and list all user drives within the VM. Uses lsblk command under the hood.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
+		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, trc *share.NetTapRuntimeContext) int {
 			lsblkOut, err := fm.Lsblk()
 			if err != nil {
 				slog.Error("Failed to list block devices in the VM", "error", err.Error())
@@ -29,6 +30,6 @@ var lsCmd = &cobra.Command{
 			}
 
 			return 0
-		}, nil, false))
+		}, nil, false, false))
 	},
 }

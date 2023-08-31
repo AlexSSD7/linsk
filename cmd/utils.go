@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"os/user"
@@ -17,6 +16,8 @@ import (
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/nettap"
+	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/storage"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
@@ -64,7 +65,7 @@ func createStore() *storage.Storage {
 	return store
 }
 
-func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool) int {
+func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager, *share.NetTapRuntimeContext) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool, withNetTap bool) int {
 	store := createStore()
 
 	vmImagePath, err := store.CheckVMImageExists()
@@ -80,7 +81,7 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 
 	biosPath, err := store.CheckDownloadVMBIOS()
 	if err != nil {
-		slog.Error("Failed to check/download VM BIOS", "error", err)
+		slog.Error("Failed to check/download VM BIOS", "error", err.Error())
 		os.Exit(1)
 	}
 
@@ -89,6 +90,85 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	if passthroughArg != "" {
 		passthroughConfig = getDevicePassthroughConfig(passthroughArg)
 		doUSBRootCheck()
+	}
+
+	var tapRuntimeCtx *share.NetTapRuntimeContext
+	var tapsConfig []vm.TapConfig
+
+	if withNetTap {
+		tapManager, err := nettap.NewTapManager(slog.With("caller", "nettap-manager"))
+		if err != nil {
+			slog.Error("Failed to create new network tap manager", "error", err.Error())
+			os.Exit(1)
+		}
+
+		tapNameToUse := nettap.NewRandomTapName()
+		// TODO: Run two instances at the same time and check whether nothing is wrongfully pruned.
+		knownAllocs, err := store.ListNetTapAllocations()
+		if err != nil {
+			slog.Error("Failed to list net tap allocations", "error", err.Error())
+			os.Exit(1)
+		}
+
+		removedTaps, err := tapManager.PruneTaps(knownAllocs)
+		if err != nil {
+			slog.Error("Failed to prune dangling network taps", "error", err.Error())
+		} else {
+			// This is optional, meaning that we won't exit in panic if this fails.
+			for _, removedTap := range removedTaps {
+				err = store.ReleaseNetTapAllocation(removedTap)
+				if err != nil {
+					slog.Error("Failed to release a danging net tap allocation", "error", err.Error())
+				}
+			}
+		}
+
+		err = store.SaveNetTapAllocation(tapNameToUse, os.Getpid())
+		if err != nil {
+			slog.Error("Failed to save net tap allocation", "error", err.Error())
+			os.Exit(1)
+		}
+
+		tapManager, err = nettap.NewTapManager(slog.Default())
+		if err != nil {
+			slog.Error("Failed to create net tap manager", "error", err.Error())
+			os.Exit(1)
+		}
+
+		err = tapManager.CreateNewTap(tapNameToUse)
+		if err != nil {
+			releaseErr := store.ReleaseNetTapAllocation(tapNameToUse)
+			if releaseErr != nil {
+				slog.Error("Failed to release net tap allocation", "error", releaseErr.Error(), "tapname", tapNameToUse)
+			}
+
+			slog.Error("Failed to create new tap", "error", err.Error())
+			os.Exit(1)
+		}
+
+		tapNet, err := nettap.GenerateNet()
+		if err != nil {
+			slog.Error("Failed to generate tap net plan", "error", err.Error())
+			os.Exit(1)
+		}
+
+		err = tapManager.ConfigureNet(tapNameToUse, tapNet.HostCIDR)
+		if err != nil {
+			slog.Error("Failed to configure tap net", "error", err.Error())
+			os.Exit(1)
+		}
+
+		tapRuntimeCtx = &share.NetTapRuntimeContext{
+			Manager: tapManager,
+			Name:    tapNameToUse,
+			Net:     tapNet,
+		}
+
+		tapsConfig = []vm.TapConfig{{
+			Name: tapNameToUse,
+		}}
+
+		// TODO: Clean the tap up before exiting.
 	}
 
 	vmCfg := vm.VMConfig{
@@ -103,11 +183,13 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		PassthroughConfig:        passthroughConfig,
 		ExtraPortForwardingRules: forwardPortsRules,
 
+		UnrestrictedNetworking: unrestrictedNetworking,
+		Taps:                   tapsConfig,
+
 		OSUpTimeout:  time.Duration(vmOSUpTimeoutFlag) * time.Second,
 		SSHUpTimeout: time.Duration(vmSSHSetupTimeoutFlag) * time.Second,
 
-		UnrestrictedNetworking: unrestrictedNetworking,
-		ShowDisplay:            vmDebugFlag,
+		ShowDisplay: vmDebugFlag,
 	}
 
 	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)
@@ -177,7 +259,23 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 				os.Exit(1)
 			}
 
-			exitCode := fn(ctx, vi, fm)
+			startupFailed := false
+
+			if tapRuntimeCtx != nil {
+				err := vi.ConfigureInterfaceStaticNet(context.Background(), "eth1", tapRuntimeCtx.Net.GuestCIDR)
+				if err != nil {
+					slog.Error("Failed to configure tag interface network", "error", err.Error())
+					startupFailed = true
+				}
+			}
+
+			var exitCode int
+
+			if !startupFailed {
+				exitCode = fn(ctx, vi, fm, tapRuntimeCtx)
+			} else {
+				exitCode = 1
+			}
 
 			err = vi.Cancel()
 			if err != nil {
@@ -199,64 +297,6 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			return exitCode
 		}
 	}
-}
-
-func checkPortAvailable(port uint16, subsequent uint16) (bool, error) {
-	if port+subsequent < port {
-		return false, fmt.Errorf("subsequent ports exceed allowed port range")
-	}
-
-	if subsequent == 0 {
-		ln, err := net.Listen("tcp", ":"+fmt.Sprint(port))
-		if err != nil {
-			if opErr, ok := err.(*net.OpError); ok {
-				if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
-					if sysErr.Err == syscall.EADDRINUSE {
-						// The port is in use.
-						return false, nil
-					}
-				}
-			}
-
-			return false, errors.Wrapf(err, "net listen (port %v)", port)
-		}
-
-		err = ln.Close()
-		if err != nil {
-			return false, errors.Wrap(err, "close ephemeral listener")
-		}
-
-		return true, nil
-	}
-
-	for i := uint16(0); i < subsequent; i++ {
-		ok, err := checkPortAvailable(port+i, 0)
-		if err != nil {
-			return false, errors.Wrapf(err, "check subsequent port available (base: %v, seq: %v)", port, i)
-		}
-
-		if !ok {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func getClosestAvailPortWithSubsequent(port uint16, subsequent uint16) (uint16, error) {
-	// We use 10 as port range
-	for i := port; i < 65535; i += subsequent {
-		ok, err := checkPortAvailable(i, subsequent)
-		if err != nil {
-			return 0, errors.Wrapf(err, "check port available (%v)", i)
-		}
-
-		if ok {
-			return i, nil
-		}
-	}
-
-	return 0, fmt.Errorf("no available port (with %v subsequent ones) found", subsequent)
 }
 
 func getDevicePassthroughConfig(val string) vm.PassthroughConfig {
@@ -294,17 +334,18 @@ func getDevicePassthroughConfig(val string) vm.PassthroughConfig {
 		}
 	case "dev":
 		devPath := filepath.Clean(valSplit[1])
-		stat, err := os.Stat(devPath)
-		if err != nil {
-			slog.Error("Failed to stat the device path", "error", err.Error(), "path", devPath)
-			os.Exit(1)
-		}
+		// TODO: This is for Linux only. Should support Windows as well.
+		// stat, err := os.Stat(devPath)
+		// if err != nil {
+		// 	slog.Error("Failed to stat the device path", "error", err.Error(), "path", devPath)
+		// 	os.Exit(1)
+		// }
 
-		isDev := stat.Mode()&os.ModeDevice != 0
-		if !isDev {
-			slog.Error("Provided path is not a path to a valid block device", "path", devPath, "file-mode", stat.Mode())
-			os.Exit(1)
-		}
+		// isDev := stat.Mode()&os.ModeDevice != 0
+		// if !isDev {
+		// 	slog.Error("Provided path is not a path to a valid block device", "path", devPath, "file-mode", stat.Mode())
+		// 	os.Exit(1)
+		// }
 
 		return vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
 			Path: devPath,

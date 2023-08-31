@@ -247,3 +247,64 @@ pasv_address=` + extIP.String() + `
 
 	return nil
 }
+
+func (fm *FileManager) StartSMB(pwd string) error {
+	// This timeout is for the SCP client exclusively.
+	scpCtx, scpCtxCancel := context.WithTimeout(fm.vm.ctx, time.Second*5)
+	defer scpCtxCancel()
+
+	scpClient, err := fm.vm.DialSCP()
+	if err != nil {
+		return errors.Wrap(err, "dial scp")
+	}
+
+	defer scpClient.Close()
+
+	sambaCfg := `[global]
+workgroup = WORKGROUP
+dos charset = cp866
+unix charset = utf-8
+
+read raw = yes
+write raw = yes
+socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+min receivefile size = 16384
+use sendfile = true
+aio read size = 16384
+aio write size = 16384
+server signing = no
+	
+[linsk]
+browseable = yes
+writeable = yes
+path = /mnt
+force user = linsk
+force group = linsk
+create mask = 0664`
+
+	err = scpClient.CopyFile(scpCtx, strings.NewReader(sambaCfg), "/etc/samba/smb.conf", "0400")
+	if err != nil {
+		return errors.Wrap(err, "copy samba config file")
+	}
+
+	scpClient.Close()
+
+	sc, err := fm.vm.DialSSH()
+	if err != nil {
+		return errors.Wrap(err, "dial ssh")
+	}
+
+	defer func() { _ = sc.Close() }()
+
+	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, "rc-update add samba && rc-service samba start")
+	if err != nil {
+		return errors.Wrap(err, "add and start samba service")
+	}
+
+	err = sshutil.ChangeSambaPass(fm.vm.ctx, sc, "linsk", pwd)
+	if err != nil {
+		return errors.Wrap(err, "change samba pass")
+	}
+
+	return nil
+}

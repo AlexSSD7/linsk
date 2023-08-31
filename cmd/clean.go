@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AlexSSD7/linsk/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +27,7 @@ var cleanCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if strings.ToLower(string(answer)) != "y\n" {
+		if utils.ClearUnprintableChars(strings.ToLower(string(answer)), false) != "y" {
 			fmt.Fprintf(os.Stderr, "Aborted.\n")
 			os.Exit(2)
 		}
@@ -36,6 +37,8 @@ var cleanCmd = &cobra.Command{
 			slog.Error("Failed to remove all", "error", err.Error(), "path", rmPath)
 			os.Exit(1)
 		}
+
+		// TODO: Clean network tap allocations, if any.
 
 		slog.Info("Deleted data directory", "path", rmPath)
 	},

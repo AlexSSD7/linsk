@@ -157,7 +157,8 @@ func (bc *BuildContext) BuildWithInterruptHandler() error {
 
 			bc.logger.Info("VM OS installation in progress")
 
-			err = runAlpineSetupCmd(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "vsftpd"})
+			// TODO: Compile select features only.
+			err = runAlpineSetupCmd(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "vsftpd", "samba"})
 			if err != nil {
 				return errors.Wrap(err, "run alpine setup cmd")
 			}

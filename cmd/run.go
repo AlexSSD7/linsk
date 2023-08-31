@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
+	"runtime"
+	"strings"
 
+	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
@@ -20,46 +22,30 @@ var runCmd = &cobra.Command{
 		vmMountDevName := args[1]
 		fsType := args[2]
 
-		ftpPassivePortCount := uint16(9)
+		newBackendFunc := share.GetBackend(shareBackendFlag)
+		if newBackendFunc == nil {
+			slog.Error("Unknown file share backend", "type", shareBackendFlag)
+			os.Exit(1)
+		}
 
-		networkSharePort, err := getClosestAvailPortWithSubsequent(9000, 10)
+		cfg, err := share.RawUserConfiguration{
+			ListenIP: shareListenIPFlag,
+
+			FTPExtIP:   ftpExtIPFlag,
+			SMBExtMode: smbUseExternAddrFlag,
+		}.Process(shareBackendFlag, slog.With("caller", "share-config"))
 		if err != nil {
-			slog.Error("Failed to get closest available host port for network file share", "error", err.Error())
+			slog.Error("Failed to process raw configuration", "error", err.Error())
 			os.Exit(1)
 		}
 
-		ftpListenIP := net.ParseIP(ftpListenAddrFlag)
-		if ftpListenIP == nil {
-			slog.Error("Invalid FTP listen address specified", "value", ftpListenAddrFlag)
+		backend, vmOpts, err := newBackendFunc(cfg)
+		if err != nil {
+			slog.Error("Failed to initialize share backend", "backend", shareBackendFlag, "error", err.Error())
 			os.Exit(1)
 		}
 
-		ftpExtIP := net.ParseIP(ftpExtIPFlag)
-		if ftpExtIP == nil {
-			slog.Error("Invalid FTP external IP specified", "value", ftpExtIPFlag)
-			os.Exit(1)
-		}
-
-		if ftpListenAddrFlag != defaultFTPListenAddr && ftpExtIPFlag == defaultFTPListenAddr {
-			slog.Warn("No external FTP IP address via --ftp-extip was configured. This is a requirement in almost all scenarios if you want to connect remotely.")
-		}
-
-		ports := []vm.PortForwardingRule{{
-			HostIP:   ftpListenIP,
-			HostPort: networkSharePort,
-			VMPort:   21,
-		}}
-
-		for i := uint16(0); i < ftpPassivePortCount; i++ {
-			p := networkSharePort + 1 + i
-			ports = append(ports, vm.PortForwardingRule{
-				HostIP:   ftpListenIP,
-				HostPort: p,
-				VMPort:   p,
-			})
-		}
-
-		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
+		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, tapCtx *share.NetTapRuntimeContext) int {
 			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsType, "luks", luksFlag)
 
 			err := fm.Mount(vmMountDevName, vm.MountOptions{
@@ -77,32 +63,53 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
-			err = fm.StartFTP(sharePWD, networkSharePort+1, ftpPassivePortCount, ftpExtIP)
+			shareURI, err := backend.Apply(ctx, sharePWD, &share.VMShareContext{
+				Instance:    i,
+				FileManager: fm,
+				NetTapCtx:   tapCtx,
+			})
 			if err != nil {
-				slog.Error("Failed to start FTP server", "error", err.Error())
+				slog.Error("Failed to apply (start) file share backend", "backend", shareBackendFlag, "error", err.Error())
 				return 1
 			}
 
 			slog.Info("Started the network share successfully", "type", "ftp")
 
-			shareURI := "ftp://linsk:" + sharePWD + "@" + ftpExtIP.String() + ":" + fmt.Sprint(networkSharePort)
-
-			fmt.Fprintf(os.Stderr, "================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: FTP\nServer Address: ftp://%v:%v\nUsername: linsk\nPassword: %v\n\nShare URI: %v\n================\n", ftpExtIP.String(), networkSharePort, sharePWD, shareURI)
+			fmt.Fprintf(os.Stderr, "============================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
 
 			<-ctx.Done()
 			return 0
-		}, ports, unrestrictedNetworkingFlag))
+		}, vmOpts.Ports, unrestrictedNetworkingFlag, vmOpts.EnableTap))
 	},
 }
 
 var luksFlag bool
-var ftpListenAddrFlag string
+var shareListenIPFlag string
 var ftpExtIPFlag string
-
-const defaultFTPListenAddr = "127.0.0.1"
+var shareBackendFlag string
+var smbUseExternAddrFlag bool
 
 func init() {
 	runCmd.Flags().BoolVarP(&luksFlag, "luks", "l", false, "Use cryptsetup to open a LUKS volume (password will be prompted).")
-	runCmd.Flags().StringVar(&ftpListenAddrFlag, "ftp-listen", defaultFTPListenAddr, "Specifies the address to bind the FTP ports to. NOTE: Changing bind address is not enough to connect remotely. You should also specify --ftp-extip.")
-	runCmd.Flags().StringVar(&ftpExtIPFlag, "ftp-extip", defaultFTPListenAddr, "Specifies the external IP the FTP server should advertise.")
+
+	var defaultShareType string
+	switch runtime.GOOS {
+	case "windows":
+		defaultShareType = "smb"
+	default:
+		defaultShareType = "ftp"
+	}
+
+	runCmd.Flags().StringVar(&shareBackendFlag, "share-backend", defaultShareType, "Specifies the file share backend to use. The default value is OS-specific.")
+	runCmd.Flags().StringVar(&shareListenIPFlag, "share-listen", share.GetDefaultListenIPStr(), "Specifies the IP to bind the network share port to. NOTE: For FTP, changing the bind address is not enough to connect remotely. You should also specify --ftp-extip.")
+
+	smbExternDefault := false
+	if runtime.GOOS == "windows" {
+		smbExternDefault = true
+	}
+
+	runCmd.Flags().StringVar(&ftpExtIPFlag, "ftp-extip", share.GetDefaultListenIPStr(), "Specifies the external IP the FTP server should advertise.")
+	runCmd.Flags().BoolVar(&smbUseExternAddrFlag, "smb-extern", smbExternDefault, "Specifies whether Linsk emulate external networking for the VM's SMB server. This is the default for Windows as there is no way to specify ports in Windows SMB client.")
+
+	// TODO: log the use of smbUseExternAddrFlag when SMB is not enabled.
 }

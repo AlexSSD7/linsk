@@ -18,6 +18,7 @@ import (
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/nettap"
 	"github.com/AlexSSD7/linsk/sshutil"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
@@ -64,6 +65,10 @@ type DriveConfig struct {
 	SnapshotMode bool
 }
 
+type TapConfig struct {
+	Name string
+}
+
 type VMConfig struct {
 	CdromImagePath string
 	BIOSPath       string
@@ -74,14 +79,17 @@ type VMConfig struct {
 	PassthroughConfig        PassthroughConfig
 	ExtraPortForwardingRules []PortForwardingRule
 
+	// Networking
+	UnrestrictedNetworking bool
+	Taps                   []TapConfig
+
 	// Timeouts
 	OSUpTimeout  time.Duration
 	SSHUpTimeout time.Duration
 
 	// Mostly debug-related options.
-	UnrestrictedNetworking bool
-	ShowDisplay            bool
-	InstallBaseUtilities   bool
+	ShowDisplay          bool
+	InstallBaseUtilities bool
 }
 
 func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
@@ -150,6 +158,17 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 
 	cmdArgs = append(cmdArgs, "-device", "e1000,netdev=net0", "-netdev", netdevOpts)
 
+	for i, tap := range cfg.Taps {
+		err := nettap.ValidateTapName(tap.Name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "validate network tap #%v name", i)
+		}
+
+		netdevName := "net" + fmt.Sprint(1+i)
+
+		cmdArgs = append(cmdArgs, "-device", "e1000,netdev="+netdevName, "-netdev", "tap,id="+netdevName+",ifname="+shellescape.Quote(tap.Name)+",script=no,downscript=no")
+	}
+
 	if !cfg.ShowDisplay {
 		cmdArgs = append(cmdArgs, "-display", "none")
 	} else if runtime.GOARCH == "arm64" {
@@ -193,6 +212,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	for _, dev := range cfg.PassthroughConfig.Block {
 		// It's always a user's responsibility to ensure that no drives are mounted
 		// in both host and guest system. This should serve as the last resort.
+		// TODO: Windows support.
 		{
 			seemsMounted, err := checkDeviceSeemsMounted(dev.Path)
 			if err != nil {
@@ -204,7 +224,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 			}
 		}
 
-		cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(dev.Path)+",format=raw,aio=native,cache=none")
+		cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(strings.ReplaceAll(dev.Path, "\\", "/"))+",format=raw,cache=none")
 	}
 
 	// We're not using clean `cdromImagePath` here because it is set to "."

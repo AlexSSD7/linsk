@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
@@ -39,11 +40,7 @@ var shellCmd = &cobra.Command{
 			forwardPortRules = append(forwardPortRules, fpr)
 		}
 
-		if !unrestrictedNetworkingFlag {
-			slog.Warn("IMPORTANT: By default, Linsk shell starts a VM with restricted networking as it's done with `run` command. This means that you will have no internet access in the shell. If you want to have access to the internet, please add `--vm-unrestricted-networking` flag to your `linsk shell` command.")
-		}
-
-		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.VM, fm *vm.FileManager) int {
+		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.VM, fm *vm.FileManager, trc *share.NetTapRuntimeContext) int {
 			sc, err := i.DialSSH()
 			if err != nil {
 				slog.Error("Failed to dial VM SSH", "error", err.Error())
@@ -130,7 +127,8 @@ var shellCmd = &cobra.Command{
 			}
 
 			return 0
-		}, forwardPortRules, unrestrictedNetworkingFlag))
+		}, forwardPortRules, true, false))
+		// TODO: Enable tap option.
 	},
 }
 
