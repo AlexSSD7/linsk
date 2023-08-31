@@ -100,7 +100,6 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		}
 
 		tapNameToUse := nettap.NewRandomTapName()
-		// TODO: Run two instances at the same time and check whether nothing is wrongfully pruned.
 		knownAllocs, err := store.ListNetTapAllocations()
 		if err != nil {
 			slog.Error("Failed to list net tap allocations", "error", err.Error())

@@ -47,6 +47,10 @@ var shellCmd = &cobra.Command{
 				return 1
 			}
 
+			if trc != nil {
+				slog.Info("Tap networking is active", "host-ip", trc.Net.HostIP, "vm-ip", trc.Net.GuestIP)
+			}
+
 			defer func() { _ = sc.Close() }()
 
 			sess, err := sc.NewSession()
@@ -127,13 +131,14 @@ var shellCmd = &cobra.Command{
 			}
 
 			return 0
-		}, forwardPortRules, true, false))
-		// TODO: Enable tap option.
+		}, forwardPortRules, true, enableTapNetFlag))
 	},
 }
 
 var forwardPortsFlagStr string
+var enableTapNetFlag bool
 
 func init() {
 	shellCmd.Flags().StringVar(&forwardPortsFlagStr, "forward-ports", "", "Extra TCP port forwarding rules. Syntax: '<HOST PORT>:<VM PORT>' OR '<HOST BIND IP>:<HOST PORT>:<VM PORT>'. Multiple rules split by comma are accepted.")
+	shellCmd.Flags().BoolVar(&enableTapNetFlag, "enable-net-tap", false, "Enables host-VM tap networking.")
 }
