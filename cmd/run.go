@@ -103,13 +103,6 @@ func init() {
 	runCmd.Flags().StringVar(&shareBackendFlag, "share-backend", defaultShareType, "Specifies the file share backend to use. The default value is OS-specific.")
 	runCmd.Flags().StringVar(&shareListenIPFlag, "share-listen", share.GetDefaultListenIPStr(), "Specifies the IP to bind the network share port to. NOTE: For FTP, changing the bind address is not enough to connect remotely. You should also specify --ftp-extip.")
 
-	smbExternDefault := false
-	if runtime.GOOS == "windows" {
-		smbExternDefault = true
-	}
-
 	runCmd.Flags().StringVar(&ftpExtIPFlag, "ftp-extip", share.GetDefaultListenIPStr(), "Specifies the external IP the FTP server should advertise.")
-	runCmd.Flags().BoolVar(&smbUseExternAddrFlag, "smb-extern", smbExternDefault, "Specifies whether Linsk emulate external networking for the VM's SMB server. This is the default for Windows as there is no way to specify ports in Windows SMB client.")
-
-	// TODO: log the use of smbUseExternAddrFlag when SMB is not enabled.
+	runCmd.Flags().BoolVar(&smbUseExternAddrFlag, "smb-extern", share.IsSMBExtModeDefault(), "Specifies whether Linsk emulate external networking for the VM's SMB server. This is the default for Windows as there is no way to specify ports in Windows SMB client.")
 }

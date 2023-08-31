@@ -7,12 +7,6 @@ import (
 	"log/slog"
 )
 
-var defaultListenIP = net.ParseIP("127.0.0.1")
-
-func GetDefaultListenIPStr() string {
-	return defaultListenIP.String()
-}
-
 type UserConfiguration struct {
 	listenIP net.IP
 	ftpExtIP net.IP
@@ -47,6 +41,10 @@ func (rc RawUserConfiguration) Process(backend string, warnLogger *slog.Logger) 
 		if !ftpExtIP.Equal(defaultListenIP) {
 			slog.Warn("FTP external IP address specification is ineffective with non-FTP backends", "selected", backend)
 		}
+	}
+
+	if rc.SMBExtMode && backend != "smb" && !IsSMBExtModeDefault() {
+		slog.Warn("SMB external mode specification is ineffective with non-SMB backends")
 	}
 
 	return &UserConfiguration{

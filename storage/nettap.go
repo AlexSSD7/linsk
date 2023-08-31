@@ -42,9 +42,13 @@ func (s *Storage) ReleaseNetTapAllocation(tapName string) error {
 		return errors.Wrap(err, "get alloc file path")
 	}
 
-	// TODO: Check what happens the file doesn't exist. It should not return an error.
 	err = os.Remove(allocFilePath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			s.logger.Warn("Attempted to remove non-existent tap allocation", "tap-name", tapName)
+			return nil
+		}
+
 		return errors.Wrap(err, "remove alloc file")
 	}
 
