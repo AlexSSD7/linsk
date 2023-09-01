@@ -86,7 +86,22 @@ var runCmd = &cobra.Command{
 
 			fmt.Fprintf(os.Stderr, "===========================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
 
-			<-ctx.Done()
+			ctxWait := true
+
+			if debugShellFlag {
+				slog.Warn("Starting a debug VM shell")
+				err := runVMShell(ctx, i)
+				if err != nil {
+					slog.Error("Failed to run VM shell", "error", err.Error())
+				} else {
+					ctxWait = false
+				}
+			}
+
+			if ctxWait {
+				<-ctx.Done()
+			}
+
 			return 0
 		}, vmOpts.Ports, unrestrictedNetworkingFlag, vmOpts.EnableTap))
 	},
@@ -99,11 +114,13 @@ var (
 	ftpExtIPFlag           string
 	shareBackendFlag       string
 	smbUseExternAddrFlag   bool
+	debugShellFlag         bool
 )
 
 func init() {
 	runCmd.Flags().BoolVarP(&luksFlag, "luks", "l", false, "Use cryptsetup to open a LUKS volume (password will be prompted).")
 	runCmd.Flags().BoolVar(&allowLUKSLowMemoryFlag, "allow-luks-low-memory", false, "Allow VM memory allocation lower than 2048 MiB when LUKS is enabled.")
+	runCmd.Flags().BoolVar(&debugShellFlag, "debug-shell", false, "Start a VM shell when the network file share is active.")
 
 	var defaultShareType string
 	switch runtime.GOOS {

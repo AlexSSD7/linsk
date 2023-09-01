@@ -9,6 +9,7 @@ import (
 
 	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/vm"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
@@ -41,93 +42,14 @@ var shellCmd = &cobra.Command{
 		}
 
 		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.VM, fm *vm.FileManager, trc *share.NetTapRuntimeContext) int {
-			sc, err := i.DialSSH()
-			if err != nil {
-				slog.Error("Failed to dial VM SSH", "error", err.Error())
-				return 1
-			}
-
 			if trc != nil {
 				slog.Info("Tap networking is active", "host-ip", trc.Net.HostIP, "vm-ip", trc.Net.GuestIP)
 			}
 
-			defer func() { _ = sc.Close() }()
-
-			sess, err := sc.NewSession()
+			err := runVMShell(ctx, i)
 			if err != nil {
-				slog.Error("Failed to create new VM SSH session", "error", err.Error())
+				slog.Error("Failed to run VM shell", "error", err.Error())
 				return 1
-			}
-
-			defer func() { _ = sess.Close() }()
-
-			termFD := int(os.Stdin.Fd())
-			termState, err := term.MakeRaw(termFD)
-			if err != nil {
-				slog.Error("Failed to make raw terminal", "error", err.Error())
-				return 1
-			}
-
-			defer func() {
-				err := term.Restore(termFD, termState)
-				if err != nil {
-					slog.Error("Failed to restore terminal", "error", err.Error())
-				}
-			}()
-
-			termFDGetSize := termFD
-			if runtime.GOOS == "windows" {
-				// Another Windows workaround :/
-				termFDGetSize = int(os.Stdout.Fd())
-			}
-
-			termWidth, termHeight, err := term.GetSize(termFDGetSize)
-			if err != nil {
-				slog.Error("Failed to get terminal size", "error", err.Error())
-				return 1
-			}
-
-			termModes := ssh.TerminalModes{
-				ssh.ECHO:          1,
-				ssh.TTY_OP_ISPEED: 14400,
-				ssh.TTY_OP_OSPEED: 14400,
-			}
-
-			term := os.Getenv("TERM")
-			if term == "" {
-				term = "xterm-256color"
-			}
-
-			err = sess.RequestPty(term, termHeight, termWidth, termModes)
-			if err != nil {
-				slog.Error("Failed to request VM SSH pty", "error", err.Error())
-				return 1
-			}
-
-			sess.Stdin = os.Stdin
-			sess.Stdout = os.Stdout
-			sess.Stderr = os.Stderr
-
-			err = sess.Shell()
-			if err != nil {
-				slog.Error("Start VM SSH shell", "error", err.Error())
-				return 1
-			}
-
-			doneCh := make(chan struct{}, 1)
-
-			go func() {
-				err = sess.Wait()
-				if err != nil {
-					slog.Error("Failed to wait for VM SSH session to finish", "error", err.Error())
-				}
-
-				doneCh <- struct{}{}
-			}()
-
-			select {
-			case <-ctx.Done():
-			case <-doneCh:
 			}
 
 			return 0
@@ -141,4 +63,87 @@ var enableTapNetFlag bool
 func init() {
 	shellCmd.Flags().StringVar(&forwardPortsFlagStr, "forward-ports", "", "Extra TCP port forwarding rules. Syntax: '<HOST PORT>:<VM PORT>' OR '<HOST BIND IP>:<HOST PORT>:<VM PORT>'. Multiple rules split by comma are accepted.")
 	shellCmd.Flags().BoolVar(&enableTapNetFlag, "enable-net-tap", false, "Enables host-VM tap networking.")
+}
+
+func runVMShell(ctx context.Context, vi *vm.VM) error {
+	sc, err := vi.DialSSH()
+	if err != nil {
+		return errors.Wrap(err, "dial ssh")
+	}
+
+	defer func() { _ = sc.Close() }()
+
+	sess, err := sc.NewSession()
+	if err != nil {
+		return errors.Wrap(err, "new vm ssh session")
+	}
+
+	defer func() { _ = sess.Close() }()
+
+	termFD := int(os.Stdin.Fd())
+	termState, err := term.MakeRaw(termFD)
+	if err != nil {
+		return errors.Wrap(err, "make raw terminal")
+	}
+
+	defer func() {
+		err := term.Restore(termFD, termState)
+		if err != nil {
+			slog.Error("Failed to restore terminal", "error", err.Error())
+		}
+	}()
+
+	termFDGetSize := termFD
+	if runtime.GOOS == "windows" {
+		// Workaround for Windows.
+		termFDGetSize = int(os.Stdout.Fd())
+	}
+
+	termWidth, termHeight, err := term.GetSize(termFDGetSize)
+	if err != nil {
+		return errors.Wrap(err, "get terminal size")
+	}
+
+	termModes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	term := os.Getenv("TERM")
+	if term == "" {
+		term = "xterm-256color"
+	}
+
+	err = sess.RequestPty(term, termHeight, termWidth, termModes)
+	if err != nil {
+		return errors.Wrap(err, "request vm ssh pty")
+	}
+
+	sess.Stdin = os.Stdin
+	sess.Stdout = os.Stdout
+	sess.Stderr = os.Stderr
+
+	err = sess.Shell()
+	if err != nil {
+		return errors.Wrap(err, "start vm ssh shell")
+	}
+
+	doneCh := make(chan struct{}, 1)
+
+	go func() {
+		err = sess.Wait()
+		if err != nil {
+			slog.Error("Failed to wait for VM SSH session to finish", "error", err.Error())
+		}
+
+		doneCh <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-doneCh:
+	}
+
+	return nil
 }
