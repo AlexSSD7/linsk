@@ -67,12 +67,12 @@ func (b *SMBBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareCont
 
 	var shareURL string
 	if b.sharePort != nil {
-		shareURL = "smb://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(*b.sharePort))
+		shareURL = "smb://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(*b.sharePort)) + "/linsk"
 	} else if vc.NetTapCtx != nil {
 		if runtime.GOOS == "windows" {
 			shareURL = `\\` + strings.ReplaceAll(vc.NetTapCtx.Net.GuestIP.String(), ":", "-") + ".ipv6-literal.net" + `\linsk`
 		} else {
-			shareURL = "smb://" + net.JoinHostPort(vc.NetTapCtx.Net.GuestIP.String(), fmt.Sprint(smbPort))
+			shareURL = "smb://" + net.JoinHostPort(vc.NetTapCtx.Net.GuestIP.String(), fmt.Sprint(smbPort)) + "/linsk"
 		}
 	} else {
 		return "", fmt.Errorf("no port forwarding and net tap configured")

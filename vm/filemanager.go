@@ -266,6 +266,8 @@ func (fm *FileManager) StartSMB(pwd string) error {
 workgroup = WORKGROUP
 dos charset = cp866
 unix charset = utf-8
+client min protocol = SMB2
+client max protocol = SMB3
 
 read raw = yes
 write raw = yes
@@ -275,7 +277,7 @@ use sendfile = true
 aio read size = 16384
 aio write size = 16384
 server signing = no
-	
+
 [linsk]
 browseable = yes
 writeable = yes
