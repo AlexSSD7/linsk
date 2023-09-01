@@ -19,6 +19,7 @@ import (
 	"log/slog"
 
 	"github.com/AlexSSD7/linsk/nettap"
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/AlexSSD7/linsk/sshutil"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
@@ -115,9 +116,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	var accel string
 	switch runtime.GOOS {
 	case "windows":
-		// TODO: whpx accel is broken in Windows. Long term solution looks to be use Hyper-V.
-
-		// For Windows, we need to install QEMU using an installer and add it to PATH.
+		// TODO: To document: For Windows, we need to install QEMU using an installer and add it to PATH.
 		// Then, we should enable Windows Hypervisor Platform in "Turn Windows features on or off".
 		// IMPORTANT: We should also install libusbK drivers for USB devices we want to pass through.
 		// This can be easily done with a program called Zadiag by Akeo.
@@ -216,14 +215,14 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	}
 
 	if len(cfg.PassthroughConfig.Block) != 0 {
-		logger.Warn("Detected raw block device passthrough. Please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time. Otherwise, you run serious risks. No further warnings will be issued.")
+		logger.Warn("Using raw block device passthrough. Please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time. Otherwise, you run serious risks. No further warnings will be issued.")
 	}
 
 	for _, dev := range cfg.PassthroughConfig.Block {
 		// It's always a user's responsibility to ensure that no drives are mounted
 		// in both host and guest system. This should serve as the last resort.
 		{
-			seemsMounted, err := checkDeviceSeemsMounted(dev.Path)
+			seemsMounted, err := osspecifics.CheckDeviceSeemsMounted(dev.Path)
 			if err != nil {
 				return nil, errors.Wrapf(err, "check whether device seems to be mounted (path '%v')", dev.Path)
 			}
@@ -275,7 +274,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	cmd.Stderr = stderrBuf
 
 	// This function is OS-specific.
-	prepareVMCmd(cmd)
+	osspecifics.SetNewProcessGroupCmd(cmd)
 
 	userReader := bufio.NewReader(userRead)
 
@@ -456,7 +455,7 @@ func (vm *VM) Cancel() error {
 		if vm.cmd.Process == nil {
 			interruptErr = fmt.Errorf("process is not started")
 		} else {
-			interruptErr = terminateProcess(vm.cmd.Process.Pid)
+			interruptErr = osspecifics.TerminateProcess(vm.cmd.Process.Pid)
 		}
 	}
 
@@ -582,7 +581,7 @@ func (vm *VM) runPeriodicHostMountChecker() {
 			return
 		case <-time.After(time.Second):
 			for _, dev := range vm.originalCfg.PassthroughConfig.Block {
-				seemsMounted, err := checkDeviceSeemsMounted(dev.Path)
+				seemsMounted, err := osspecifics.CheckDeviceSeemsMounted(dev.Path)
 				if err != nil {
 					vm.logger.Warn("Failed to check if a passed device seems to be mounted", "dev-path", dev.Path)
 					continue

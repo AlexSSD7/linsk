@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -17,40 +16,12 @@ import (
 	"log/slog"
 
 	"github.com/AlexSSD7/linsk/nettap"
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/storage"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
 )
-
-func checkIfRoot() (bool, error) {
-	currentUser, err := user.Current()
-	if err != nil {
-		return false, errors.Wrap(err, "get current user")
-	}
-	return currentUser.Username == "root", nil
-}
-
-func doUSBRootCheck() {
-	switch runtime.GOOS {
-	case "windows":
-		// Administrator privileges are not required in Windows.
-		return
-	default:
-		// As for everything else, we will likely need root privileges
-		// for the USB passthrough.
-	}
-
-	ok, err := checkIfRoot()
-	if err != nil {
-		slog.Error("Failed to check whether the command is ran by root", "error", err.Error())
-		return
-	}
-
-	if !ok {
-		slog.Warn("USB passthrough on your OS usually requires this program to be ran as root")
-	}
-}
 
 func createStoreOrExit() *storage.Storage {
 	store, err := storage.NewStorage(slog.With("caller", "storage"), dataDirFlag)
@@ -92,8 +63,18 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		}
 
 		passthroughConfig = *passthroughConfigPtr
+	}
 
-		doUSBRootCheck()
+	if len(passthroughConfig.USB) != 0 {
+		// Log USB-related warnings.
+
+		switch runtime.GOOS {
+		case "windows":
+			// TODO: To document: installation of libusbK driver with Zadig utility.
+			slog.Warn("USB passthrough is unstable on Windows and requires installation of libusbK driver. Please consider using raw block device passthrough instead.")
+		case "darwin":
+			slog.Warn("USB passthrough is unstable on macOS. Please consider using raw block device passthrough instead.")
+		}
 	}
 
 	var tapRuntimeCtx *share.NetTapRuntimeContext
@@ -314,6 +295,15 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 }
 
 func getDevicePassthroughConfig(val string) (*vm.PassthroughConfig, error) {
+	isRoot, err := osspecifics.CheckRunAsRoot()
+	if err != nil {
+		return nil, errors.Wrap(err, "check whether the program is run as root")
+	}
+
+	if !isRoot {
+		return nil, fmt.Errorf("device passthrough of any type requires root (admin) privileges")
+	}
+
 	valSplit := strings.Split(val, ":")
 	if want, have := 2, len(valSplit); want != have {
 		return nil, fmt.Errorf("bad device passthrough syntax: wrong items split by ':' count: want %v, have %v", want, have)
@@ -344,16 +334,11 @@ func getDevicePassthroughConfig(val string) (*vm.PassthroughConfig, error) {
 		}, nil
 	case "dev":
 		devPath := filepath.Clean(valSplit[1])
-		// TODO: This is for Linux only. Should support Windows as well.
-		// stat, err := os.Stat(devPath)
-		// if err != nil {
-		// 	slog.Error("Failed to stat the device path", "error", err.Error(), "path", devPath)
-		// }
 
-		// isDev := stat.Mode()&os.ModeDevice != 0
-		// if !isDev {
-		// 	slog.Error("Provided path is not a path to a valid block device", "path", devPath, "file-mode", stat.Mode())
-		// }
+		err := osspecifics.CheckValidDevicePath(devPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "check whether device path is valid '%v'", devPath)
+		}
 
 		return &vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
 			Path: devPath,
