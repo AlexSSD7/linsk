@@ -57,7 +57,7 @@ func CheckValidDevicePath(devPath string) error {
 
 	isDev := stat.Mode()&os.ModeDevice != 0
 	if !isDev {
-		fmt.Errorf("file mode is not device (%v)", stat.Mode())
+		return fmt.Errorf("file mode is not device (%v)", stat.Mode())
 	}
 
 	return nil
