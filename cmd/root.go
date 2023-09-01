@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -26,12 +27,19 @@ func Execute() {
 	}
 }
 
-var vmDebugFlag bool
-var unrestrictedNetworkingFlag bool
-var vmMemAllocFlag uint32
-var vmSSHSetupTimeoutFlag uint32
-var vmOSUpTimeoutFlag uint32
-var dataDirFlag string
+var (
+	vmDebugFlag                bool
+	unrestrictedNetworkingFlag bool
+	vmMemAllocFlag             uint32
+	vmSSHSetupTimeoutFlag      uint32
+	vmOSUpTimeoutFlag          uint32
+	dataDirFlag                string
+)
+
+const (
+	defaultMemAlloc     = 512
+	defaultMemAllocLUKS = 2048
+)
 
 func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
@@ -45,7 +53,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vm-debug", false, "Enables the VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
 	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "vm-unrestricted-networking", false, "Enables unrestricted networking. This will allow the VM to connect to the internet.")
-	rootCmd.PersistentFlags().Uint32Var(&vmMemAllocFlag, "vm-mem-alloc", 512, "Specifies the VM memory allocation in KiB")
+	rootCmd.PersistentFlags().Uint32Var(&vmMemAllocFlag, "vm-mem-alloc", defaultMemAlloc, fmt.Sprintf("Specifies the VM memory allocation in KiB (the default is %v in LUKS mode)", defaultMemAllocLUKS))
 	rootCmd.PersistentFlags().Uint32Var(&vmOSUpTimeoutFlag, "vm-os-up-timeout", 30, "Specifies the VM OS-up timeout in seconds.")
 	rootCmd.PersistentFlags().Uint32Var(&vmSSHSetupTimeoutFlag, "vm-ssh-setup-timeout", 60, "Specifies the VM SSH server setup timeout in seconds. This cannot be lower than the OS-up timeout.")
 

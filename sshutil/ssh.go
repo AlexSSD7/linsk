@@ -50,13 +50,13 @@ func RunSSHCmd(ctx context.Context, sc *ssh.Client, cmd string) ([]byte, error) 
 }
 
 func NewSSHSession(ctx context.Context, timeout time.Duration, sc *ssh.Client, fn func(*ssh.Session) error) error {
-	return NewSSHSessionWithDelayedTimeout(ctx, timeout, sc, func(sess *ssh.Session, startTimeout func()) error {
-		startTimeout()
+	return NewSSHSessionWithDelayedTimeout(ctx, timeout, sc, func(sess *ssh.Session, startTimeout func(preTimeout func())) error {
+		startTimeout(nil)
 		return fn(sess)
 	})
 }
 
-func NewSSHSessionWithDelayedTimeout(ctx context.Context, timeout time.Duration, sc *ssh.Client, fn func(sess *ssh.Session, startTimeout func()) error) error {
+func NewSSHSessionWithDelayedTimeout(ctx context.Context, timeout time.Duration, sc *ssh.Client, fn func(sess *ssh.Session, startTimeout func(preTimeout func())) error) error {
 	s, err := sc.NewSession()
 	if err != nil {
 		return errors.Wrap(err, "create new ssh session")
@@ -77,12 +77,13 @@ func NewSSHSessionWithDelayedTimeout(ctx context.Context, timeout time.Duration,
 		}
 	}()
 
-	err = fn(s, func() {
+	err = fn(s, func(preTimeout func()) {
 		// Now start a thread which will close the session
 		// down when the timeout hits.
 		go func() {
 			select {
 			case <-time.After(timeout):
+				preTimeout()
 				timedOut = true
 				_ = sc.Close()
 			case <-done:

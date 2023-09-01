@@ -6,7 +6,7 @@ import (
 )
 
 func IsSMBExtModeDefault() bool {
-	return runtime.GOOS == "windows1"
+	return runtime.GOOS == "windows"
 }
 
 var defaultListenIP = net.ParseIP("127.0.0.1")

@@ -76,7 +76,7 @@ const luksDMName = "cryptmnt"
 func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 	lg := fm.logger.With("vm-path", fullDevPath)
 
-	return sshutil.NewSSHSessionWithDelayedTimeout(fm.vm.ctx, time.Second*15, sc, func(sess *ssh.Session, startTimeout func()) error {
+	return sshutil.NewSSHSessionWithDelayedTimeout(fm.vm.ctx, time.Second*15, sc, func(sess *ssh.Session, startTimeout func(preTimeout func())) error {
 		stdinPipe, err := sess.StdinPipe()
 		if err != nil {
 			return errors.Wrap(err, "create vm ssh session stdin pipe")
@@ -106,7 +106,9 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 
 		// We start the timeout countdown now only to avoid timing out
 		// while the user is entering the password, or shortly after that.
-		startTimeout()
+		startTimeout(func() {
+			lg.Warn("LUKS open command timed out. If you are using large-memory key derivation function, try increasing the VM memory allocation using --vm-mem-alloc flag.")
+		})
 
 		var wErr error
 		var wWG sync.WaitGroup
@@ -136,7 +138,7 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 		err = sess.Wait()
 		if err != nil {
 			if strings.Contains(stderrBuf.String(), "Not enough available memory to open a keyslot.") {
-				fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag")
+				fm.logger.Warn("Detected not enough memory to open a LUKS device, please allocate more memory using --vm-mem-alloc flag.")
 			}
 
 			return utils.WrapErrWithLog(err, "wait for cryptsetup luksopen cmd to finish", stderrBuf.String())

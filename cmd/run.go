@@ -45,6 +45,15 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if luksFlag && !allowLUKSLowMemoryFlag {
+			if vmMemAllocFlag < 2048 {
+				if vmMemAllocFlag != defaultMemAlloc {
+					slog.Warn("Enforcing minimum LUKS memory allocation. Please add --allow-luks-low-memory to disable this.", "min", vmMemAllocFlag, "specified", vmMemAllocFlag)
+				}
+				vmMemAllocFlag = defaultMemAllocLUKS
+			}
+		}
+
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, tapCtx *share.NetTapRuntimeContext) int {
 			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsType, "luks", luksFlag)
 
@@ -83,14 +92,18 @@ var runCmd = &cobra.Command{
 	},
 }
 
-var luksFlag bool
-var shareListenIPFlag string
-var ftpExtIPFlag string
-var shareBackendFlag string
-var smbUseExternAddrFlag bool
+var (
+	luksFlag               bool
+	allowLUKSLowMemoryFlag bool
+	shareListenIPFlag      string
+	ftpExtIPFlag           string
+	shareBackendFlag       string
+	smbUseExternAddrFlag   bool
+)
 
 func init() {
 	runCmd.Flags().BoolVarP(&luksFlag, "luks", "l", false, "Use cryptsetup to open a LUKS volume (password will be prompted).")
+	runCmd.Flags().BoolVar(&allowLUKSLowMemoryFlag, "allow-luks-low-memory", false, "Allow VM memory allocation lower than 2048 MiB when LUKS is enabled.")
 
 	var defaultShareType string
 	switch runtime.GOOS {
