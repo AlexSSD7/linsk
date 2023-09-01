@@ -32,9 +32,9 @@ var shellCmd = &cobra.Command{
 				continue
 			}
 
-			fpr, err := vm.ParsePortForwardString(fp)
+			fpr, err := vm.ParsePortForwardingRuleString(fp)
 			if err != nil {
-				slog.Error("Failed to parse port forward string", "index", i, "value", fp, "error", err.Error())
+				slog.Error("Failed to parse port forwarding rule string", "index", i, "value", fp, "error", err.Error())
 				os.Exit(1)
 			}
 
@@ -43,7 +43,7 @@ var shellCmd = &cobra.Command{
 
 		os.Exit(runVM(passthroughArg, func(ctx context.Context, i *vm.VM, fm *vm.FileManager, trc *share.NetTapRuntimeContext) int {
 			if trc != nil {
-				slog.Info("Tap networking is active", "host-ip", trc.Net.HostIP, "vm-ip", trc.Net.GuestIP)
+				slog.Info("Tap host-VM networking is active", "host-ip", trc.Net.HostIP, "vm-ip", trc.Net.GuestIP)
 			}
 
 			err := runVMShell(ctx, i)

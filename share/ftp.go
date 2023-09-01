@@ -44,8 +44,7 @@ func NewFTPBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 			passivePortCount: passivePortCount,
 			extIP:            uc.ftpExtIP,
 		}, &VMShareOptions{
-			Ports:     ports,
-			EnableTap: false,
+			Ports: ports,
 		}, nil
 }
 

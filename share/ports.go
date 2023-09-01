@@ -14,7 +14,7 @@ func getNetworkSharePort(subsequent uint16) (uint16, error) {
 }
 
 func getClosestAvailPortWithSubsequent(port uint16, subsequent uint16) (uint16, error) {
-	// We use 10 as port range
+	// We use 10 as port range.
 	for i := port; i < 65535; i += subsequent {
 		ok, err := checkPortAvailable(i, subsequent)
 		if err != nil {
@@ -31,6 +31,7 @@ func getClosestAvailPortWithSubsequent(port uint16, subsequent uint16) (uint16, 
 
 func checkPortAvailable(port uint16, subsequent uint16) (bool, error) {
 	if port+subsequent < port {
+		// We check for uint16 overflow here.
 		return false, fmt.Errorf("subsequent ports exceed allowed port range")
 	}
 

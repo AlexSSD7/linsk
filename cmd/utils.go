@@ -68,6 +68,10 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 	if len(passthroughConfig.USB) != 0 {
 		// Log USB-related warnings.
 
+		// Unfortunately USB passthrough is unstable in macOS and Windows. On Windows, you also need to install external
+		// libusbK driver, which nullifies the UX. This is a problem with how QEMU works, and unfortunately there isn't
+		// much we can do about it from our side.
+
 		switch runtime.GOOS {
 		case "windows":
 			// TODO: To document: installation of libusbK driver with Zadig utility.

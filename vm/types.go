@@ -15,7 +15,7 @@ type PortForwardingRule struct {
 	VMPort   uint16
 }
 
-func ParsePortForwardString(s string) (PortForwardingRule, error) {
+func ParsePortForwardingRuleString(s string) (PortForwardingRule, error) {
 	split := strings.Split(s, ":")
 	switch len(split) {
 	case 2:

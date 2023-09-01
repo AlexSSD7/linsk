@@ -76,10 +76,6 @@ func CheckRunAsRoot() (bool, error) {
 
 	defer func() { _ = windows.FreeSid(sid) }()
 
-	// This appears to cast a null pointer so I'm not sure why this
-	// works, but this guy says it does and it Works for Me™:
-	// https://github.com/golang/go/issues/28804#issuecomment-438838144
-
 	member, err := windows.Token(0).IsMember(sid)
 	if err != nil {
 		return false, errors.Wrap(err, "check win sid membership")

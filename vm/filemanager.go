@@ -158,7 +158,7 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 		return fmt.Errorf("device name is empty")
 	}
 
-	// It does allow mapper/ prefix for mapped devices.
+	// It does allow "mapper/" prefix for mapped devices.
 	// This is to enable the support for LVM and LUKS.
 	if !utils.ValidateDevName(devName) {
 		return fmt.Errorf("bad device name")

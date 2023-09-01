@@ -19,7 +19,7 @@ func GetLogErrMsg(s string, logLabel string) string {
 	origLogLen := len(logToInclude)
 	const maxLogLen = 256
 	if origLogLen > maxLogLen {
-		logToInclude = fmt.Sprintf("[%v chars trimmed]", origLogLen) + logToInclude[len(logToInclude)-maxLogLen:]
+		logToInclude = fmt.Sprintf("[%v chars trimmed]", origLogLen-maxLogLen) + logToInclude[len(logToInclude)-maxLogLen:]
 	}
 
 	return fmt.Sprintf("(%v: '%v')", logLabel, logToInclude)

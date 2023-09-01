@@ -50,6 +50,7 @@ var runCmd = &cobra.Command{
 				if vmMemAllocFlag != defaultMemAlloc {
 					slog.Warn("Enforcing minimum LUKS memory allocation. Please add --allow-luks-low-memory to disable this.", "min", vmMemAllocFlag, "specified", vmMemAllocFlag)
 				}
+
 				vmMemAllocFlag = defaultMemAllocLUKS
 			}
 		}
