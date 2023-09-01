@@ -242,7 +242,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 	}
 
 	if cfg.InstallBaseUtilities && !cfg.UnrestrictedNetworking {
-		return nil, fmt.Errorf("cannot install base utilities with unrestricted networking disabled")
+		return nil, fmt.Errorf("installation of base utilities is impossible with unrestricted networking disabled")
 	}
 
 	// NOTE: The default timeouts below have no relation to the default
@@ -514,7 +514,7 @@ func (vm *VM) runVMLoginHandler() error {
 			if bytes.Contains(peek, []byte("login:")) {
 				err = vm.writeSerial([]byte("root\n"))
 				if err != nil {
-					return errors.Wrap(err, "failed to stdio write login")
+					return errors.Wrap(err, "stdio write login")
 				}
 
 				vm.logger.Debug("Logged into the VM serial")
@@ -558,7 +558,7 @@ func (vm *VM) DialSCP() (*scp.Client, error) {
 	sc := scp.NewClient("localhost:"+fmt.Sprint(vm.sshMappedPort), vm.sshConf)
 	err := sc.Connect()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "connect")
 	}
 
 	return &sc, nil
