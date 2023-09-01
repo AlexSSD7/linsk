@@ -87,7 +87,12 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 			return 1
 		}
 
-		tapNameToUse := nettap.NewRandomTapName()
+		tapNameToUse, err := nettap.NewRandomTapName()
+		if err != nil {
+			slog.Error("Failed to generate new network tap name", "error", err.Error())
+			return 1
+		}
+
 		knownAllocs, err := store.ListNetTapAllocations()
 		if err != nil {
 			slog.Error("Failed to list net tap allocations", "error", err.Error())
