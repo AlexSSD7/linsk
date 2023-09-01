@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/alessio/shellescape"
 	"github.com/pkg/errors"
 )
 
@@ -46,7 +47,7 @@ func EncodeArgs(args []Arg) ([]string, error) {
 
 		cmdArgs = append(cmdArgs, flag)
 		if value != nil {
-			cmdArgs = append(cmdArgs, *value)
+			cmdArgs = append(cmdArgs, shellescape.Quote(*value))
 		}
 	}
 
