@@ -232,7 +232,7 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 			}
 		}
 
-		cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(strings.ReplaceAll(dev.Path, "\\", "/"))+",format=raw,cache=none")
+		cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(strings.ReplaceAll(dev.Path, "\\", "/"))+",format=raw,if=virtio,cache=none")
 	}
 
 	// We're not using clean `cdromImagePath` here because it is set to "."

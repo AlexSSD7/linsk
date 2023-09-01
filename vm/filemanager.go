@@ -58,7 +58,7 @@ func (fm *FileManager) Lsblk() ([]byte, error) {
 		return nil, errors.Wrap(err, "dial vm ssh")
 	}
 
-	ret, err := sshutil.RunSSHCmd(fm.vm.ctx, sc, "lsblk -o NAME,SIZE,FSTYPE,LABEL -e 7,11,2,253")
+	ret, err := sshutil.RunSSHCmd(fm.vm.ctx, sc, "lsblk -o NAME,SIZE,FSTYPE,LABEL -e 7,11,2")
 	if err != nil {
 		return nil, errors.Wrap(err, "run lsblk")
 	}
