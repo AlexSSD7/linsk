@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (vi *VM) ConfigureInterfaceStaticNet(ctx context.Context, iface string, cidr string) error {
+func (vm *VM) ConfigureInterfaceStaticNet(ctx context.Context, iface string, cidr string) error {
 	ip, _, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return errors.Wrap(err, "invalid cidr")
@@ -21,7 +21,7 @@ func (vi *VM) ConfigureInterfaceStaticNet(ctx context.Context, iface string, cid
 		return fmt.Errorf("ipv6 addresses accepted only (have '%v')", ip)
 	}
 
-	sc, err := vi.DialSSH()
+	sc, err := vm.DialSSH()
 	if err != nil {
 		return errors.Wrap(err, "dial ssh")
 	}

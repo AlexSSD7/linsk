@@ -33,7 +33,9 @@ func createStoreOrExit() *storage.Storage {
 	return store
 }
 
-func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManager, *share.NetTapRuntimeContext) int, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool, withNetTap bool) int {
+type runVMFunc func(context.Context, *vm.VM, *vm.FileManager, *share.NetTapRuntimeContext) int
+
+func runVM(passthroughArg string, fn runVMFunc, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool, withNetTap bool) int {
 	store := createStoreOrExit()
 
 	vmImagePath, err := store.CheckVMImageExists()
@@ -196,6 +198,10 @@ func runVM(passthroughArg string, fn func(context.Context, *vm.VM, *vm.FileManag
 		ShowDisplay: vmDebugFlag,
 	}
 
+	return innerRunVM(vmCfg, tapRuntimeCtx, fn)
+}
+
+func innerRunVM(vmCfg vm.VMConfig, tapRuntimeCtx *share.NetTapRuntimeContext, fn runVMFunc) int {
 	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)
 	if err != nil {
 		slog.Error("Failed to create vm instance", "error", err.Error())
