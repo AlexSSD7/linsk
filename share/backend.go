@@ -11,6 +11,7 @@ type Backend interface {
 var backends = map[string]NewBackendFunc{
 	"ftp": NewFTPBackend,
 	"smb": NewSMBBackend,
+	"afp": NewAFPBackend,
 }
 
 // Will return nil if no backend is found.

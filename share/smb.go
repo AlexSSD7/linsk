@@ -7,15 +7,11 @@ import (
 	"runtime"
 	"strings"
 
-	"log/slog"
-
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
 )
 
 const smbPort = 445
-
-// TODO: Test SMB backend on macOS.
 
 type SMBBackend struct {
 	listenIP  net.IP
@@ -62,8 +58,6 @@ func (b *SMBBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareCont
 	if err != nil {
 		return "", errors.Wrap(err, "start smb server")
 	}
-
-	slog.Info("Started the network share successfully", "type", "smb", "ext", vc.NetTapCtx != nil)
 
 	var shareURL string
 	if b.sharePort != nil {

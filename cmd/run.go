@@ -72,17 +72,19 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
+			lg := slog.With("backend", shareBackendFlag)
+
 			shareURI, err := backend.Apply(ctx, sharePWD, &share.VMShareContext{
 				Instance:    i,
 				FileManager: fm,
 				NetTapCtx:   tapCtx,
 			})
 			if err != nil {
-				slog.Error("Failed to apply (start) file share backend", "backend", shareBackendFlag, "error", err.Error())
+				lg.Error("Failed to apply (start) file share backend", "error", err.Error())
 				return 1
 			}
 
-			slog.Info("Started the network share successfully", "type", "ftp")
+			lg.Info("Started the network share successfully")
 
 			fmt.Fprintf(os.Stderr, "===========================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
 

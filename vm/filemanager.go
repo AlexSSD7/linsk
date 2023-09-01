@@ -284,7 +284,8 @@ writeable = yes
 path = /mnt
 force user = linsk
 force group = linsk
-create mask = 0664`
+create mask = 0664
+`
 
 	err = scpClient.CopyFile(scpCtx, strings.NewReader(sambaCfg), "/etc/samba/smb.conf", "0400")
 	if err != nil {
@@ -308,6 +309,56 @@ create mask = 0664`
 	err = sshutil.ChangeSambaPass(fm.vm.ctx, sc, "linsk", pwd)
 	if err != nil {
 		return errors.Wrap(err, "change samba pass")
+	}
+
+	return nil
+}
+
+func (fm *FileManager) StartAFP(pwd string) error {
+	// This timeout is for the SCP client exclusively.
+	scpCtx, scpCtxCancel := context.WithTimeout(fm.vm.ctx, time.Second*5)
+	defer scpCtxCancel()
+
+	scpClient, err := fm.vm.DialSCP()
+	if err != nil {
+		return errors.Wrap(err, "dial scp")
+	}
+
+	defer scpClient.Close()
+
+	afpCfg := `[Global]
+
+[linsk]
+path = /mnt
+file perm = 0664
+directory perm = 0775
+valid users = linsk
+force user = linsk
+force group = linsk
+`
+
+	err = scpClient.CopyFile(scpCtx, strings.NewReader(afpCfg), "/etc/afp.conf", "0400")
+	if err != nil {
+		return errors.Wrap(err, "copy netatalk config file")
+	}
+
+	scpClient.Close()
+
+	sc, err := fm.vm.DialSSH()
+	if err != nil {
+		return errors.Wrap(err, "dial ssh")
+	}
+
+	defer func() { _ = sc.Close() }()
+
+	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, "rc-update add netatalk && rc-service netatalk start")
+	if err != nil {
+		return errors.Wrap(err, "add and start netatalk service")
+	}
+
+	err = sshutil.ChangeUnixPass(fm.vm.ctx, sc, "linsk", pwd)
+	if err != nil {
+		return errors.Wrap(err, "change unix pass")
 	}
 
 	return nil

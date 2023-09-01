@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net"
 
-	"log/slog"
-
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
 )
@@ -60,8 +58,6 @@ func (b *FTPBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareCont
 	if err != nil {
 		return "", errors.Wrap(err, "start ftp server")
 	}
-
-	slog.Info("Started the network share successfully", "type", "ftp")
 
 	return "ftp://" + b.extIP.String() + ":" + fmt.Sprint(b.sharePort), nil
 }
