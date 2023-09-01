@@ -128,6 +128,8 @@ func init() {
 	switch runtime.GOOS {
 	case "windows":
 		defaultShareType = "smb"
+	case "darwin":
+		defaultShareType = "afp"
 	default:
 		defaultShareType = "ftp"
 	}
