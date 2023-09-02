@@ -38,7 +38,7 @@ func validateFileHash(path string, hash []byte) error {
 	sum := h.Sum(nil)
 
 	if !bytes.Equal(sum, hash) {
-		return fmt.Errorf("hash mismatch: want '%v', have '%v'", hex.EncodeToString(hash), hex.EncodeToString(sum))
+		return fmt.Errorf("hash mismatch: want '%v', have '%v' (path '%v')", hex.EncodeToString(hash), hex.EncodeToString(sum), path)
 	}
 
 	return nil

@@ -13,10 +13,9 @@ var buildCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		store := createStoreOrExit()
 
-		err := store.BuildVMImageWithInterruptHandler(vmDebugFlag, buildOverwriteFlag)
-		if err != nil {
-			slog.Error("Failed to build VM image", "error", err.Error())
-			os.Exit(1)
+		exitCode := store.RunCLIImageBuild(vmDebugFlag, buildOverwriteFlag)
+		if exitCode != 0 {
+			os.Exit(exitCode)
 		}
 
 		slog.Info("VM image built successfully", "path", store.GetVMImagePath())

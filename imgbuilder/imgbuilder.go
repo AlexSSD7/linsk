@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
-	"syscall"
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/cmd/runvm"
 	"github.com/AlexSSD7/linsk/osspecifics"
+	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/alessio/shellescape"
@@ -88,99 +87,29 @@ func createQEMUImg(outPath string) error {
 	return nil
 }
 
-func (bc *BuildContext) BuildWithInterruptHandler() error {
-	defer func() {
-		err := bc.vi.Cancel()
+func (bc *BuildContext) RunCLIBuild() int {
+	return runvm.RunVM(bc.vi, false, nil, func(ctx context.Context, v *vm.VM, fm *vm.FileManager, ntrc *share.NetTapRuntimeContext) int {
+		sc, err := bc.vi.DialSSH()
 		if err != nil {
-			bc.logger.Error("Failed to cancel VM context", "error", err.Error())
+			bc.logger.Error("Failed to dial VM SSH", "error", err.Error())
+			return 1
 		}
-	}()
 
-	runErrCh := make(chan error, 1)
-	var wg sync.WaitGroup
+		defer func() { _ = sc.Close() }()
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	defer ctxCancel()
+		bc.logger.Info("VM OS installation in progress")
 
-	interrupt := make(chan os.Signal, 2)
-	signal.Notify(interrupt, syscall.SIGTERM, syscall.SIGINT)
-	defer signal.Reset()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		err := bc.vi.Run()
-		ctxCancel()
-		runErrCh <- err
-	}()
-
-	go func() {
-		for i := 0; ; i++ {
-			select {
-			case <-ctx.Done():
-				return
-			case sig := <-interrupt:
-				lg := slog.With("signal", sig)
-
-				if i == 0 {
-					lg.Warn("Caught interrupt, safely shutting down")
-				} else if i < 10 {
-					lg.Warn("Caught subsequent interrupt, please interrupt n more times to panic", "n", 10-i)
-				} else {
-					panic("force interrupt")
-				}
-
-				err := bc.vi.Cancel()
-				if err != nil {
-					lg.Warn("Failed to cancel VM context", "error", err.Error())
-				}
-			}
+		err = runAlpineSetup(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "vsftpd", "samba", "netatalk"})
+		if err != nil {
+			bc.logger.Error("Failed to set up Alpine Linux", "error", err.Error())
+			return 1
 		}
-	}()
 
-	for {
-		select {
-		case err := <-runErrCh:
-			if err == nil {
-				return fmt.Errorf("operation canceled by user")
-			}
-
-			return errors.Wrap(err, "start vm")
-		case <-bc.vi.SSHUpNotifyChan():
-			sc, err := bc.vi.DialSSH()
-			if err != nil {
-				return errors.Wrap(err, "dial vm ssh")
-			}
-
-			defer func() { _ = sc.Close() }()
-
-			bc.logger.Info("VM OS installation in progress")
-
-			err = runAlpineSetupCmd(sc, []string{"openssh", "lvm2", "util-linux", "cryptsetup", "vsftpd", "samba", "netatalk"})
-			if err != nil {
-				return errors.Wrap(err, "run alpine setup cmd")
-			}
-
-			err = bc.vi.Cancel()
-			if err != nil {
-				return errors.Wrap(err, "cancel vm context")
-			}
-
-			select {
-			case err := <-runErrCh:
-				if err != nil {
-					return errors.Wrap(err, "run vm")
-				}
-			default:
-			}
-
-			return nil
-		}
-	}
+		return 0
+	})
 }
 
-func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
+func runAlpineSetup(sc *ssh.Client, pkgs []string) error {
 	sess, err := sc.NewSession()
 	if err != nil {
 		return errors.Wrap(err, "new session")
@@ -204,6 +133,7 @@ func runAlpineSetupCmd(sc *ssh.Client, pkgs []string) error {
 		cmd += " && mount /dev/vda3 /mnt && chroot /mnt apk add " + strings.Join(pkgsQuoted, " ")
 	}
 
+	//nolint:dupword
 	cmd += `&& chroot /mnt ash -c 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && addgroup -g 1000 linsk && adduser -D -h /mnt -G linsk linsk -u 1000 && touch /etc/network/interfaces'`
 
 	err = sess.Run(cmd)

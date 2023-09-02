@@ -27,10 +27,8 @@ func (s *Storage) download(url string, hash []byte, out string, applyReaderMiddl
 	_, err := os.Stat(out)
 	if err == nil {
 		return errors.Wrap(err, "file already exists")
-	} else {
-		if !errors.Is(err, os.ErrNotExist) {
-			return errors.Wrap(err, "stat out path")
-		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return errors.Wrap(err, "stat out path")
 	}
 
 	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY, 0400)

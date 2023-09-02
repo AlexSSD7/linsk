@@ -3,7 +3,6 @@ package storage
 import (
 	"compress/bzip2"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -69,33 +68,37 @@ func (s *Storage) GetAarch64EFIImagePath() string {
 	return filepath.Join(s.path, constants.GetAarch64EFIImageName())
 }
 
-func (s *Storage) BuildVMImageWithInterruptHandler(showBuilderVMDisplay bool, overwrite bool) error {
+func (s *Storage) RunCLIImageBuild(showBuilderVMDisplay bool, overwrite bool) int {
 	vmImagePath := s.GetVMImagePath()
 	removed, err := checkExistsOrRemove(vmImagePath, overwrite)
 	if err != nil {
-		return errors.Wrap(err, "check exists or remove")
+		slog.Error("Failed to check for (and remove) existing VM image", "error", err.Error())
+		return 1
 	}
 
 	baseImagePath, err := s.CheckDownloadBaseImage()
 	if err != nil {
-		return errors.Wrap(err, "check/download base image")
+		slog.Error("Failed to check or download base VM image", "error", err.Error())
+		return 1
 	}
 
 	biosPath, err := s.CheckDownloadVMBIOS()
 	if err != nil {
-		return errors.Wrap(err, "check/download vm bios")
+		slog.Error("Failed to check or download VM BIOS", "error", err.Error())
+		return 1
 	}
 
 	s.logger.Info("Building VM image", "tags", constants.GetAlpineBaseImageTags(), "overwriting", removed, "dst", vmImagePath)
 
 	buildCtx, err := imgbuilder.NewBuildContext(s.logger.With("subcaller", "imgbuilder"), baseImagePath, vmImagePath, showBuilderVMDisplay, biosPath)
 	if err != nil {
-		return errors.Wrap(err, "create new img build context")
+		slog.Error("Failed to create new image build context", "error", err.Error())
+		return 1
 	}
 
-	err = buildCtx.BuildWithInterruptHandler()
-	if err != nil {
-		return errors.Wrap(err, "do build")
+	exitCode := buildCtx.RunCLIBuild()
+	if exitCode != 0 {
+		return exitCode
 	}
 
 	err = os.Remove(baseImagePath)
@@ -105,7 +108,7 @@ func (s *Storage) BuildVMImageWithInterruptHandler(showBuilderVMDisplay bool, ov
 		s.logger.Info("Removed base image", "path", baseImagePath)
 	}
 
-	return nil
+	return 0
 }
 
 func (s *Storage) CheckVMImageExists() (string, error) {
@@ -152,9 +155,7 @@ func (s *Storage) CheckDownloadAarch64EFIImage() (string, error) {
 		}
 
 		// EFI image doesn't exist. Download one.
-		err := s.download(constants.GetAarch64EFIImageBZ2URL(), constants.GetAarch64EFIImageHash(), efiImagePath, func(r io.Reader) io.Reader {
-			return bzip2.NewReader(r)
-		})
+		err := s.download(constants.GetAarch64EFIImageBZ2URL(), constants.GetAarch64EFIImageHash(), efiImagePath, bzip2.NewReader)
 		if err != nil {
 			return "", errors.Wrap(err, "download base alpine image")
 		}
