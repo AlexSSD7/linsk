@@ -37,7 +37,7 @@ func cleanQEMUPath(s string) string {
 	return path
 }
 
-func configureBaseVMCmd(logger *slog.Logger, cfg VMConfig) (string, []qemucli.Arg, error) {
+func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg, error) {
 	baseCmd := "qemu-system"
 
 	if osspecifics.IsWindows() {
@@ -180,7 +180,7 @@ func configureVMCmdTapNetwork(tapName string) ([]qemucli.Arg, error) {
 	return []qemucli.Arg{netdevArg, deviceArg}, nil
 }
 
-func configureVMCmdNetworking(logger *slog.Logger, cfg VMConfig, sshPort uint16) ([]qemucli.Arg, error) {
+func configureVMCmdNetworking(logger *slog.Logger, cfg Config, sshPort uint16) ([]qemucli.Arg, error) {
 	// SSH port config.
 	ports := []PortForwardingRule{{
 		HostIP:   net.ParseIP("127.0.0.1"),
@@ -211,7 +211,7 @@ func configureVMCmdNetworking(logger *slog.Logger, cfg VMConfig, sshPort uint16)
 	return args, nil
 }
 
-func configureVMCmdDrives(cfg VMConfig) ([]qemucli.Arg, error) {
+func configureVMCmdDrives(cfg Config) ([]qemucli.Arg, error) {
 	var args []qemucli.Arg
 
 	for i, drive := range cfg.Drives {
@@ -265,7 +265,7 @@ func configureVMCmdDrives(cfg VMConfig) ([]qemucli.Arg, error) {
 	return args, nil
 }
 
-func configureVMCmdUSBPassthrough(cfg VMConfig) []qemucli.Arg {
+func configureVMCmdUSBPassthrough(cfg Config) []qemucli.Arg {
 	var args []qemucli.Arg
 
 	if len(cfg.PassthroughConfig.USB) != 0 {
@@ -283,7 +283,7 @@ func configureVMCmdUSBPassthrough(cfg VMConfig) []qemucli.Arg {
 	return args
 }
 
-func configureVMCmdBlockDevicePassthrough(logger *slog.Logger, cfg VMConfig) ([]qemucli.Arg, error) {
+func configureVMCmdBlockDevicePassthrough(logger *slog.Logger, cfg Config) ([]qemucli.Arg, error) {
 	var args []qemucli.Arg
 
 	if len(cfg.PassthroughConfig.Block) != 0 {

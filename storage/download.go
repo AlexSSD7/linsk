@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Storage) download(url string, hash []byte, out string, applyReaderMiddleware func(io.Reader) io.Reader) error {
+func (s *Storage) download(ctx context.Context, url string, hash []byte, out string, applyReaderMiddleware func(io.Reader) io.Reader) error {
 	var created, success bool
 
 	defer func() {
@@ -40,9 +41,14 @@ func (s *Storage) download(url string, hash []byte, out string, applyReaderMiddl
 
 	defer func() { _ = f.Close() }()
 
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return errors.Wrap(err, "create new http get request")
+	}
+
 	s.logger.Info("Starting to download file", "from", url, "to", out)
 
-	resp, err := http.Get(url)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "http get")
 	}

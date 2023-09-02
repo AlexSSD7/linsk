@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -43,7 +44,7 @@ func runVM(passthroughArg string, fn runvm.RunVMFunc, forwardPortsRules []vm.Por
 		return 1
 	}
 
-	biosPath, err := store.CheckDownloadVMBIOS()
+	biosPath, err := store.CheckDownloadVMBIOS(context.Background())
 	if err != nil {
 		slog.Error("Failed to check/download VM BIOS", "error", err.Error())
 		return 1
@@ -171,7 +172,7 @@ func runVM(passthroughArg string, fn runvm.RunVMFunc, forwardPortsRules []vm.Por
 		}}
 	}
 
-	vmCfg := vm.VMConfig{
+	vmCfg := vm.Config{
 		Drives: []vm.DriveConfig{{
 			Path:         vmImagePath,
 			SnapshotMode: true,

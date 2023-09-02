@@ -7,12 +7,12 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-type NetTapAlloc struct {
+type Alloc struct {
 	TapName string
 	PID     int
 }
 
-func (a *NetTapAlloc) Validate() error {
+func (a *Alloc) Validate() error {
 	err := ValidateTapName(a.TapName)
 	if err != nil {
 		return errors.Wrap(err, "validate tap name")
@@ -22,7 +22,7 @@ func (a *NetTapAlloc) Validate() error {
 		return fmt.Errorf("pid is zero")
 	}
 
-	if a.PID > int(a.PID) {
+	if a.PID > int(int32(a.PID)) {
 		return fmt.Errorf("pid int32 overflow (%v)", a.PID)
 	}
 
@@ -31,7 +31,7 @@ func (a *NetTapAlloc) Validate() error {
 
 // The taps removed slice always returns the taps removed, even after
 // an error has occurred sometime while deleting non-first interfaces.
-func (tm *TapManager) PruneTaps(knownAllocs []NetTapAlloc) ([]string, error) {
+func (tm *TapManager) PruneTaps(knownAllocs []Alloc) ([]string, error) {
 	var tapsRemoved []string
 
 	for i, alloc := range knownAllocs {

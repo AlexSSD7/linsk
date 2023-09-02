@@ -2,6 +2,7 @@ package storage
 
 import (
 	"compress/bzip2"
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -34,7 +35,7 @@ func NewStorage(logger *slog.Logger, dataDir string) (*Storage, error) {
 	}, nil
 }
 
-func (s *Storage) CheckDownloadBaseImage() (string, error) {
+func (s *Storage) CheckDownloadBaseImage(ctx context.Context) (string, error) {
 	baseImagePath := filepath.Join(s.path, constants.GetAlpineBaseImageFileName())
 	_, err := os.Stat(baseImagePath)
 	if err != nil {
@@ -43,7 +44,7 @@ func (s *Storage) CheckDownloadBaseImage() (string, error) {
 		}
 
 		// Image doesn't exist. Download one.
-		err := s.download(constants.GetAlpineBaseImageURL(), constants.GetAlpineBaseImageHash(), baseImagePath, nil)
+		err := s.download(ctx, constants.GetAlpineBaseImageURL(), constants.GetAlpineBaseImageHash(), baseImagePath, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "download base alpine image")
 		}
@@ -76,13 +77,16 @@ func (s *Storage) RunCLIImageBuild(showBuilderVMDisplay bool, overwrite bool) in
 		return 1
 	}
 
-	baseImagePath, err := s.CheckDownloadBaseImage()
+	// We're using context.Background() everywhere because this is intended
+	// to be executed as a blocking CLI command.
+
+	baseImagePath, err := s.CheckDownloadBaseImage(context.Background())
 	if err != nil {
 		slog.Error("Failed to check or download base VM image", "error", err.Error())
 		return 1
 	}
 
-	biosPath, err := s.CheckDownloadVMBIOS()
+	biosPath, err := s.CheckDownloadVMBIOS(context.Background())
 	if err != nil {
 		slog.Error("Failed to check or download VM BIOS", "error", err.Error())
 		return 1
@@ -131,9 +135,9 @@ func (s *Storage) DataDirPath() string {
 	return s.path
 }
 
-func (s *Storage) CheckDownloadVMBIOS() (string, error) {
+func (s *Storage) CheckDownloadVMBIOS(ctx context.Context) (string, error) {
 	if runtime.GOARCH == "arm64" {
-		p, err := s.CheckDownloadAarch64EFIImage()
+		p, err := s.CheckDownloadAarch64EFIImage(ctx)
 		if err != nil {
 			return "", errors.Wrap(err, "check/download aarch64 efi image")
 		}
@@ -146,7 +150,7 @@ func (s *Storage) CheckDownloadVMBIOS() (string, error) {
 	return "", nil
 }
 
-func (s *Storage) CheckDownloadAarch64EFIImage() (string, error) {
+func (s *Storage) CheckDownloadAarch64EFIImage(ctx context.Context) (string, error) {
 	efiImagePath := s.GetAarch64EFIImagePath()
 	_, err := os.Stat(efiImagePath)
 	if err != nil {
@@ -155,7 +159,7 @@ func (s *Storage) CheckDownloadAarch64EFIImage() (string, error) {
 		}
 
 		// EFI image doesn't exist. Download one.
-		err := s.download(constants.GetAarch64EFIImageBZ2URL(), constants.GetAarch64EFIImageHash(), efiImagePath, bzip2.NewReader)
+		err := s.download(ctx, constants.GetAarch64EFIImageBZ2URL(), constants.GetAarch64EFIImageHash(), efiImagePath, bzip2.NewReader)
 		if err != nil {
 			return "", errors.Wrap(err, "download base alpine image")
 		}

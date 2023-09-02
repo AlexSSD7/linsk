@@ -47,7 +47,7 @@ func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, sh
 		return nil, errors.Wrap(err, "create temporary qemu image")
 	}
 
-	vi, err := vm.NewVM(logger.With("subcaller", "vm"), vm.VMConfig{
+	vi, err := vm.NewVM(logger.With("subcaller", "vm"), vm.Config{
 		CdromImagePath: baseISOPath,
 		BIOSPath:       biosPath,
 		Drives: []vm.DriveConfig{{

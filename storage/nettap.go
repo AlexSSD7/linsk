@@ -55,13 +55,13 @@ func (s *Storage) ReleaseNetTapAllocation(tapName string) error {
 	return nil
 }
 
-func (s *Storage) ListNetTapAllocations() ([]nettap.NetTapAlloc, error) {
+func (s *Storage) ListNetTapAllocations() ([]nettap.Alloc, error) {
 	dirEntries, err := os.ReadDir(s.path)
 	if err != nil {
 		return nil, errors.Wrap(err, "read data dir")
 	}
 
-	var ret []nettap.NetTapAlloc
+	var ret []nettap.Alloc
 
 	for _, entry := range dirEntries {
 		if strings.HasPrefix(entry.Name(), tapAllocPrefix) {
@@ -84,7 +84,7 @@ func (s *Storage) ListNetTapAllocations() ([]nettap.NetTapAlloc, error) {
 				return nil, errors.Wrapf(err, "parse pid (alloc file '%v')", entryPath)
 			}
 
-			ret = append(ret, nettap.NetTapAlloc{
+			ret = append(ret, nettap.Alloc{
 				TapName: tapName,
 				PID:     int(pid),
 			})

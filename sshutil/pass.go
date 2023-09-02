@@ -56,6 +56,8 @@ func genericChangePass(ctx context.Context, sc *ssh.Client, user string, pwd str
 	})
 }
 
+type ChangePassFunc func(ctx context.Context, sc *ssh.Client, user string, pwd string) error
+
 func ChangeUnixPass(ctx context.Context, sc *ssh.Client, user string, pwd string) error {
 	return genericChangePass(ctx, sc, user, pwd, "passwd")
 }

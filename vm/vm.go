@@ -52,7 +52,7 @@ type VM struct {
 	disposed uint32
 	canceled uint32
 
-	originalCfg VMConfig
+	originalCfg Config
 }
 
 type DriveConfig struct {
@@ -64,7 +64,7 @@ type TapConfig struct {
 	Name string
 }
 
-type VMConfig struct {
+type Config struct {
 	CdromImagePath string
 	BIOSPath       string
 	Drives         []DriveConfig
@@ -87,7 +87,7 @@ type VMConfig struct {
 	InstallBaseUtilities bool
 }
 
-func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
+func NewVM(logger *slog.Logger, cfg Config) (*VM, error) {
 	sshPort, err := freeport.GetFreePort()
 	if err != nil {
 		return nil, errors.Wrap(err, "get free port for ssh server")
