@@ -37,8 +37,8 @@ func NewMapArg(key string, values map[string]string) (*MapArg, error) {
 		// The reason why we're making copies here and creating
 		// a whole other copy of the entire map is because maps
 		// are pointers, and we do not want to reference anything
-		// that will not be able to validate except at this stage
-		// of MapArg creation.
+		// that we will not be able to validate except at this
+		// stage of MapArg creation.
 		k := k
 		v := v
 
