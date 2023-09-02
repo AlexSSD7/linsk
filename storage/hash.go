@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
 
 func validateFileHash(path string, hash []byte) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0400)
+	pathClean := filepath.Clean(path)
+
+	f, err := os.OpenFile(pathClean, os.O_RDONLY, 0400)
 	if err != nil {
 		return errors.Wrap(err, "open file")
 	}
@@ -38,7 +41,7 @@ func validateFileHash(path string, hash []byte) error {
 	sum := h.Sum(nil)
 
 	if !bytes.Equal(sum, hash) {
-		return fmt.Errorf("hash mismatch: want '%v', have '%v' (path '%v')", hex.EncodeToString(hash), hex.EncodeToString(sum), path)
+		return fmt.Errorf("hash mismatch: want '%v', have '%v' (path '%v')", hex.EncodeToString(hash), hex.EncodeToString(sum), pathClean)
 	}
 
 	return nil

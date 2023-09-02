@@ -11,28 +11,31 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 )
 
 func (s *Storage) download(ctx context.Context, url string, hash []byte, out string, applyReaderMiddleware func(io.Reader) io.Reader) error {
+	outClean := filepath.Clean(out)
+
 	var created, success bool
 
 	defer func() {
 		if created && !success {
-			_ = os.Remove(out)
+			_ = os.Remove(outClean)
 		}
 	}()
 
-	_, err := os.Stat(out)
+	_, err := os.Stat(outClean)
 	if err == nil {
 		return errors.Wrap(err, "file already exists")
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return errors.Wrap(err, "stat out path")
 	}
 
-	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY, 0400)
+	f, err := os.OpenFile(outClean, os.O_CREATE|os.O_WRONLY, 0400)
 	if err != nil {
 		return errors.Wrap(err, "open file")
 	}
@@ -46,7 +49,7 @@ func (s *Storage) download(ctx context.Context, url string, hash []byte, out str
 		return errors.Wrap(err, "create new http get request")
 	}
 
-	s.logger.Info("Starting to download file", "from", url, "to", out)
+	s.logger.Info("Starting to download file", "from", url, "to", outClean)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -71,7 +74,7 @@ func (s *Storage) download(ctx context.Context, url string, hash []byte, out str
 			percent = float64(downloaded) / float64(knownSize)
 		}
 
-		lg := s.logger.With("out", out, "done", humanize.Bytes(uint64(downloaded)))
+		lg := s.logger.With("out", outClean, "done", humanize.Bytes(uint64(downloaded)))
 		if percent != 0 {
 			lg.Info("Downloading file", "percent", math.Round(percent*100*100)/100)
 		} else {
@@ -82,7 +85,7 @@ func (s *Storage) download(ctx context.Context, url string, hash []byte, out str
 		return errors.Wrap(err, "copy resp to file")
 	}
 
-	s.logger.Info("Successfully downloaded file", "from", url, "to", out, "out-size", humanize.Bytes(uint64(n)))
+	s.logger.Info("Successfully downloaded file", "from", url, "to", outClean, "out-size", humanize.Bytes(uint64(n)))
 
 	success = true
 

@@ -153,7 +153,7 @@ func NewVM(logger *slog.Logger, cfg Config) (*VM, error) {
 	sysRead, userWrite := io.Pipe()
 	userRead, sysWrite := io.Pipe()
 
-	cmd := exec.Command(baseCmd, encodedCmdArgs...)
+	cmd := exec.Command(baseCmd, encodedCmdArgs...) //#nosec G204 // I know, it's generally a bad idea to include variables into shell commands, but QEMU unfortunately does not accept anything else.
 
 	cmd.Stdin = sysRead
 	cmd.Stdout = sysWrite

@@ -65,7 +65,7 @@ func (s *Storage) ListNetTapAllocations() ([]nettap.Alloc, error) {
 
 	for _, entry := range dirEntries {
 		if strings.HasPrefix(entry.Name(), tapAllocPrefix) {
-			entryPath := filepath.Join(s.path, entry.Name())
+			entryPath := filepath.Clean(filepath.Join(s.path, entry.Name()))
 
 			tapName := strings.TrimPrefix(entry.Name(), tapAllocPrefix)
 			err := nettap.ValidateTapName(tapName)
