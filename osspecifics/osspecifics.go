@@ -29,6 +29,8 @@ func TerminateProcess(pid int) error {
 // that there are no double-mounts.
 func CheckDeviceSeemsMounted(devPathPrefix string) (bool, error) {
 	// Quite a bit hacky implementation, but it's to be used as a failsafe band-aid anyway.
+	devPathPrefix = filepath.Clean(devPathPrefix)
+
 	absDevPathPrefix, err := filepath.Abs(devPathPrefix)
 	if err != nil {
 		return false, errors.Wrap(err, "get abs path")

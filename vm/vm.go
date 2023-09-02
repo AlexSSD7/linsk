@@ -4,25 +4,19 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/hex"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"log/slog"
 
-	"github.com/AlexSSD7/linsk/nettap"
 	"github.com/AlexSSD7/linsk/osspecifics"
+	"github.com/AlexSSD7/linsk/qemucli"
 	"github.com/AlexSSD7/linsk/sshutil"
 	"github.com/AlexSSD7/linsk/utils"
-	"github.com/alessio/shellescape"
 	"github.com/bramvdbogaerde/go-scp"
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
@@ -94,152 +88,40 @@ type VMConfig struct {
 }
 
 func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
-	cdromImagePath := filepath.Clean(cfg.CdromImagePath)
-	_, err := os.Stat(cdromImagePath)
-	if err != nil {
-		return nil, errors.Wrap(err, "stat cdrom image path")
-	}
-
 	sshPort, err := freeport.GetFreePort()
 	if err != nil {
 		return nil, errors.Wrap(err, "get free port for ssh server")
 	}
 
-	cmdArgs := []string{"-serial", "stdio", "-m", fmt.Sprint(cfg.MemoryAlloc), "-smp", fmt.Sprint(runtime.NumCPU())}
-
-	if cfg.BIOSPath != "" {
-		cmdArgs = append(cmdArgs, "-bios", filepath.Clean(cfg.BIOSPath))
+	baseCmd, cmdArgs, err := configureBaseVMCmd(logger, cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "configure base vm cmd")
 	}
 
-	baseCmd := "qemu-system"
-
-	var accel string
-	switch runtime.GOOS {
-	case "windows":
-		// TODO: To document: For Windows, we need to install QEMU using an installer and add it to PATH.
-		// Then, we should enable Windows Hypervisor Platform in "Turn Windows features on or off".
-		// IMPORTANT: We should also install libusbK drivers for USB devices we want to pass through.
-		// This can be easily done with a program called Zadiag by Akeo.
-		accel = "whpx,kernel-irqchip=off"
-	case "darwin":
-		accel = "hvf"
-	default:
-		accel = "kvm"
+	netCmdArgs, err := configureVMCmdNetworking(logger, cfg, uint16(sshPort))
+	if err != nil {
+		return nil, errors.Wrap(err, "configure vm cmd networking")
 	}
 
-	switch runtime.GOARCH {
-	case "amd64":
-		baseCmd += "-x86_64"
-	case "arm64":
-		if cfg.BIOSPath == "" {
-			logger.Warn("BIOS image path is not specified while attempting to run an aarch64 (arm64) VM. The VM will not boot.")
-		}
+	cmdArgs = append(cmdArgs, netCmdArgs...)
 
-		// ",highmem=off" is required for M1.
-		cmdArgs = append(cmdArgs, "-M", "virt,highmem=off", "-cpu", "host")
-		baseCmd += "-aarch64"
-	default:
-		return nil, fmt.Errorf("arch '%v' is not supported", runtime.GOARCH)
+	driveCmdArgs, err := configureVMCmdDrives(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "configure vm cmd drives")
 	}
 
-	cmdArgs = append(cmdArgs, "-accel", accel)
+	cmdArgs = append(cmdArgs, driveCmdArgs...)
 
-	if runtime.GOOS == "windows" {
-		baseCmd += ".exe"
+	usbCmdArgs := configureVMCmdUSBPassthrough(cfg)
+
+	cmdArgs = append(cmdArgs, usbCmdArgs...)
+
+	blockDevArgs, err := configureVMCmdBlockDevicePassthrough(logger, cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "configure vm cmd block device passthrough")
 	}
 
-	netdevOpts := "user,id=net0,hostfwd=tcp:127.0.0.1:" + fmt.Sprint(sshPort) + "-:22"
-
-	if !cfg.UnrestrictedNetworking {
-		netdevOpts += ",restrict=on"
-	} else {
-		logger.Warn("Running with unrestricted networking")
-	}
-
-	for _, pf := range cfg.ExtraPortForwardingRules {
-		hostIPStr := ""
-		if pf.HostIP != nil {
-			hostIPStr = pf.HostIP.String()
-		}
-
-		netdevOpts += ",hostfwd=tcp:" + hostIPStr + ":" + fmt.Sprint(pf.HostPort) + "-:" + fmt.Sprint(pf.VMPort)
-	}
-
-	cmdArgs = append(cmdArgs, "-device", "e1000,netdev=net0", "-netdev", netdevOpts)
-
-	for i, tap := range cfg.Taps {
-		err := nettap.ValidateTapName(tap.Name)
-		if err != nil {
-			return nil, errors.Wrapf(err, "validate network tap #%v name", i)
-		}
-
-		netdevName := "net" + fmt.Sprint(1+i)
-
-		cmdArgs = append(cmdArgs, "-device", "e1000,netdev="+netdevName, "-netdev", "tap,id="+netdevName+",ifname="+shellescape.Quote(tap.Name)+",script=no,downscript=no")
-	}
-
-	if !cfg.ShowDisplay {
-		cmdArgs = append(cmdArgs, "-display", "none")
-	} else if runtime.GOARCH == "arm64" {
-		// No video is configured by default in ARM. This will enable it.
-		// TODO: This doesn't really work on arm64. It just shows a blank viewer.
-		cmdArgs = append(cmdArgs, "-device", "virtio-gpu-device")
-	}
-
-	for i, extraDrive := range cfg.Drives {
-		_, err = os.Stat(extraDrive.Path)
-		if err != nil {
-			return nil, errors.Wrapf(err, "stat extra drive #%v path", i)
-		}
-
-		driveArgs := "file=" + shellescape.Quote(strings.ReplaceAll(extraDrive.Path, "\\", "/")) + ",format=qcow2,if=none,id=disk" + fmt.Sprint(i)
-		if extraDrive.SnapshotMode {
-			driveArgs += ",snapshot=on"
-		}
-
-		devArgs := "virtio-blk-pci,drive=disk" + fmt.Sprint(i)
-
-		if cfg.CdromImagePath == "" {
-			devArgs += ",bootindex=" + fmt.Sprint(i)
-		}
-
-		cmdArgs = append(cmdArgs, "-drive", driveArgs, "-device", devArgs)
-	}
-
-	if len(cfg.PassthroughConfig.USB) != 0 {
-		cmdArgs = append(cmdArgs, "-device", "nec-usb-xhci")
-
-		for _, dev := range cfg.PassthroughConfig.USB {
-			cmdArgs = append(cmdArgs, "-device", "usb-host,vendorid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.VendorID))+",productid=0x"+hex.EncodeToString(utils.Uint16ToBytesBE(dev.ProductID)))
-		}
-	}
-
-	if len(cfg.PassthroughConfig.Block) != 0 {
-		logger.Warn("Using raw block device passthrough. Please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time. Otherwise, you run serious risks. No further warnings will be issued.")
-	}
-
-	for _, dev := range cfg.PassthroughConfig.Block {
-		// It's always a user's responsibility to ensure that no drives are mounted
-		// in both host and guest system. This should serve as the last resort.
-		{
-			seemsMounted, err := osspecifics.CheckDeviceSeemsMounted(dev.Path)
-			if err != nil {
-				return nil, errors.Wrapf(err, "check whether device seems to be mounted (path '%v')", dev.Path)
-			}
-
-			if seemsMounted {
-				return nil, fmt.Errorf("device '%v' seems to be already mounted in the host system", dev.Path)
-			}
-		}
-
-		cmdArgs = append(cmdArgs, "-drive", "file="+shellescape.Quote(strings.ReplaceAll(dev.Path, "\\", "/"))+",format=raw,if=virtio,cache=none")
-	}
-
-	// We're not using clean `cdromImagePath` here because it is set to "."
-	// when the original string is empty.
-	if cfg.CdromImagePath != "" {
-		cmdArgs = append(cmdArgs, "-boot", "d", "-cdrom", cdromImagePath)
-	}
+	cmdArgs = append(cmdArgs, blockDevArgs...)
 
 	if cfg.InstallBaseUtilities && !cfg.UnrestrictedNetworking {
 		return nil, fmt.Errorf("installation of base utilities is impossible with unrestricted networking disabled")
@@ -261,12 +143,17 @@ func NewVM(logger *slog.Logger, cfg VMConfig) (*VM, error) {
 		return nil, fmt.Errorf("vm ssh setup timeout cannot be lower than os up timeout")
 	}
 
+	encodedCmdArgs, err := qemucli.EncodeArgs(cmdArgs)
+	if err != nil {
+		return nil, errors.Wrap(err, "encode qemu cli args")
+	}
+
 	// No errors beyond this point.
 
 	sysRead, userWrite := io.Pipe()
 	userRead, sysWrite := io.Pipe()
 
-	cmd := exec.Command(baseCmd, cmdArgs...)
+	cmd := exec.Command(baseCmd, encodedCmdArgs...)
 
 	cmd.Stdin = sysRead
 	cmd.Stdout = sysWrite

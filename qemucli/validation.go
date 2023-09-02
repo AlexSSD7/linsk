@@ -23,5 +23,11 @@ func validateArgStrValue(s string) error {
 		return fmt.Errorf("commas are not allowed")
 	}
 
+	if strings.Contains(s, "\\") {
+		// Backslashes are theoretically allowed, but they rarely work as intended.
+		// For Windows paths, forward slashes should be used.
+		return fmt.Errorf("backslashes are not allowed")
+	}
+
 	return nil
 }

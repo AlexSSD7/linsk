@@ -11,10 +11,10 @@ import (
 type ArgAcceptedValue string
 
 const (
-	ArgAcceptedValueUint   ArgAcceptedValue = "uint"
-	ArgAcceptedValueString ArgAcceptedValue = "string"
-	ArgAcceptedValueMap    ArgAcceptedValue = "map"
-	ArgAcceptedValueNone   ArgAcceptedValue = "none"
+	ArgAcceptedValueUint     ArgAcceptedValue = "uint"
+	ArgAcceptedValueString   ArgAcceptedValue = "string"
+	ArgAcceptedValueKeyValue ArgAcceptedValue = "kv"
+	ArgAcceptedValueNone     ArgAcceptedValue = "none"
 )
 
 var safeArgs = map[string]ArgAcceptedValue{
@@ -22,12 +22,14 @@ var safeArgs = map[string]ArgAcceptedValue{
 	"boot":    ArgAcceptedValueString,
 	"m":       ArgAcceptedValueUint,
 	"smp":     ArgAcceptedValueUint,
-	"device":  ArgAcceptedValueMap,
-	"netdev":  ArgAcceptedValueMap,
+	"device":  ArgAcceptedValueKeyValue,
+	"netdev":  ArgAcceptedValueKeyValue,
 	"serial":  ArgAcceptedValueString,
 	"cdrom":   ArgAcceptedValueString,
 	"machine": ArgAcceptedValueString,
 	"cpu":     ArgAcceptedValueString,
+	"display": ArgAcceptedValueString,
+	"drive":   ArgAcceptedValueKeyValue,
 }
 
 type Arg interface {
@@ -47,7 +49,7 @@ func EncodeArgs(args []Arg) ([]string, error) {
 
 		cmdArgs = append(cmdArgs, flag)
 		if value != nil {
-			cmdArgs = append(cmdArgs, shellescape.Quote(*value))
+			cmdArgs = append(cmdArgs, *value)
 		}
 	}
 
@@ -78,5 +80,7 @@ func EncodeArg(a Arg) (string, *string, error) {
 		return "", nil, fmt.Errorf("empty string value while declaring non-empty value (type %v)", reflect.TypeOf(a))
 	}
 
-	return "-" + argKey, &argValueStr, nil
+	argVal := shellescape.Quote(argValueStr)
+
+	return "-" + argKey, &argVal, nil
 }
