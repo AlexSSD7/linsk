@@ -5,7 +5,7 @@ import "runtime"
 // For some reason, `runtime` package does not provide this while
 // "goconst" linter complains about us not using constants in
 // expressions like `runtime.GOOS == "windows"`. And it is
-// not wrong, accidentally mispelling these OS IDs is a
+// not wrong, accidentally misspelling these OS IDs is a
 // matter of time.
 
 func IsWindows() bool {

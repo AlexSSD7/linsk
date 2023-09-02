@@ -14,9 +14,9 @@ import (
 	"github.com/AlexSSD7/linsk/vm"
 )
 
-type RunVMFunc func(context.Context, *vm.VM, *vm.FileManager, *share.NetTapRuntimeContext) int
+type Func func(context.Context, *vm.VM, *vm.FileManager, *share.NetTapRuntimeContext) int
 
-func RunVM(vi *vm.VM, initFileManager bool, tapRuntimeCtx *share.NetTapRuntimeContext, fn RunVMFunc) int {
+func RunVM(vi *vm.VM, initFileManager bool, tapRuntimeCtx *share.NetTapRuntimeContext, fn Func) int {
 	runErrCh := make(chan error, 1)
 	var wg sync.WaitGroup
 

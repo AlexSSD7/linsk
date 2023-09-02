@@ -30,7 +30,7 @@ func createStoreOrExit() *storage.Storage {
 	return store
 }
 
-func runVM(passthroughArg string, fn runvm.RunVMFunc, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool, withNetTap bool) int {
+func runVM(passthroughArg string, fn runvm.Func, forwardPortsRules []vm.PortForwardingRule, unrestrictedNetworking bool, withNetTap bool) int {
 	store := createStoreOrExit()
 
 	vmImagePath, err := store.CheckVMImageExists()
