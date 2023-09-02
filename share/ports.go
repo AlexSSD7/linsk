@@ -38,9 +38,11 @@ func checkPortAvailable(port uint16, subsequent uint16) (bool, error) {
 	if subsequent == 0 {
 		ln, err := net.Listen("tcp", ":"+fmt.Sprint(port))
 		if err != nil {
-			if opErr, ok := err.(*net.OpError); ok {
-				if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
-					if sysErr.Err == syscall.EADDRINUSE {
+			opErr := new(net.OpError)
+			if errors.As(err, &opErr) {
+				sysErr := new(os.SyscallError)
+				if errors.As(opErr.Err, &sysErr) {
+					if errors.Is(sysErr.Err, syscall.EADDRINUSE) {
 						// The port is in use.
 						return false, nil
 					}
