@@ -28,7 +28,7 @@ func getUniqueQEMUDriveID() string {
 
 func cleanQEMUPath(s string) string {
 	path := filepath.Clean(s)
-	if runtime.GOOS == "windows" {
+	if osspecifics.IsWindows() {
 		// QEMU doesn't work well with Windows backslashes, so we're replacing them to forward slashes
 		// that work perfectly fine.
 		path = strings.ReplaceAll(s, "\\", "/")
@@ -40,7 +40,7 @@ func cleanQEMUPath(s string) string {
 func configureBaseVMCmd(logger *slog.Logger, cfg VMConfig) (string, []qemucli.Arg, error) {
 	baseCmd := "qemu-system"
 
-	if runtime.GOOS == "windows" {
+	if osspecifics.IsWindows() {
 		baseCmd += ".exe"
 	}
 
@@ -51,14 +51,14 @@ func configureBaseVMCmd(logger *slog.Logger, cfg VMConfig) (string, []qemucli.Ar
 	}
 
 	var accel string
-	switch runtime.GOOS {
-	case "windows":
+	switch {
+	case osspecifics.IsWindows():
 		// TODO: To document: For Windows, we need to install QEMU using an installer and add it to PATH.
 		// Then, we should enable Windows Hypervisor Platform in "Turn Windows features on or off".
 		// IMPORTANT: We should also install libusbK drivers for USB devices we want to pass through.
 		// This can be easily done with a program called Zadiag by Akeo.
 		accel = "whpx,kernel-irqchip=off"
-	case "darwin":
+	case osspecifics.IsMacOS():
 		accel = "hvf"
 	default:
 		accel = "kvm"

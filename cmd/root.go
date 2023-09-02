@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/spf13/cobra"
 )
 
@@ -64,7 +64,7 @@ func init() {
 		slog.Error("Failed to get user home directory, will use a local directory as a fallback", "error", err.Error(), "dir", defaultDataDir)
 	} else {
 		homeDirName := ".linsk"
-		if runtime.GOOS == "windows" {
+		if osspecifics.IsWindows() {
 			homeDirName = "Linsk"
 		}
 

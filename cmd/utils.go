@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -74,11 +73,11 @@ func runVM(passthroughArg string, fn runVMFunc, forwardPortsRules []vm.PortForwa
 		// libusbK driver, which nullifies the UX. This is a problem with how QEMU works, and unfortunately there isn't
 		// much we can do about it from our side.
 
-		switch runtime.GOOS {
-		case "windows":
+		switch {
+		case osspecifics.IsWindows():
 			// TODO: To document: installation of libusbK driver with Zadig utility.
 			slog.Warn("USB passthrough is unstable on Windows and requires installation of libusbK driver. Please consider using raw block device passthrough instead.")
-		case "darwin":
+		case osspecifics.IsMacOS():
 			slog.Warn("USB passthrough is unstable on macOS. Please consider using raw block device passthrough instead.")
 		}
 	}
@@ -235,11 +234,12 @@ func innerRunVM(vmCfg vm.VMConfig, tapRuntimeCtx *share.NetTapRuntimeContext, fn
 			case sig := <-interrupt:
 				lg := slog.With("signal", sig)
 
-				if i == 0 {
+				switch {
+				case i == 0:
 					lg.Warn("Caught interrupt, safely shutting down")
-				} else if i < 10 {
+				case i < 10:
 					lg.Warn("Caught subsequent interrupt, please interrupt n more times to panic", "n", 10-i)
-				} else {
+				default:
 					panic("force interrupt")
 				}
 

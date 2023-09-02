@@ -2,11 +2,12 @@ package share
 
 import (
 	"net"
-	"runtime"
+
+	"github.com/AlexSSD7/linsk/osspecifics"
 )
 
 func IsSMBExtModeDefault() bool {
-	return runtime.GOOS == "windows"
+	return osspecifics.IsWindows()
 }
 
 var defaultListenIP = net.ParseIP("127.0.0.1")

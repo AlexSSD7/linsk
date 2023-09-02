@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"runtime"
 	"strings"
 
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
 )
@@ -60,15 +60,16 @@ func (b *SMBBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareCont
 	}
 
 	var shareURL string
-	if b.sharePort != nil {
+	switch {
+	case b.sharePort != nil:
 		shareURL = "smb://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(*b.sharePort)) + "/linsk"
-	} else if vc.NetTapCtx != nil {
-		if runtime.GOOS == "windows" {
+	case vc.NetTapCtx != nil:
+		if osspecifics.IsWindows() {
 			shareURL = `\\` + strings.ReplaceAll(vc.NetTapCtx.Net.GuestIP.String(), ":", "-") + ".ipv6-literal.net" + `\linsk`
 		} else {
 			shareURL = "smb://" + net.JoinHostPort(vc.NetTapCtx.Net.GuestIP.String(), fmt.Sprint(smbPort)) + "/linsk"
 		}
-	} else {
+	default:
 		return "", fmt.Errorf("no port forwarding and net tap configured")
 	}
 

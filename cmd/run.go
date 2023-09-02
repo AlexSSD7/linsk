@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"runtime"
 	"strings"
 
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/sethvargo/go-password/password"
@@ -126,10 +126,10 @@ func init() {
 	runCmd.Flags().BoolVar(&debugShellFlag, "debug-shell", false, "Start a VM shell when the network file share is active.")
 
 	var defaultShareType string
-	switch runtime.GOOS {
-	case "windows":
+	switch {
+	case osspecifics.IsWindows():
 		defaultShareType = "smb"
-	case "darwin":
+	case osspecifics.IsMacOS():
 		defaultShareType = "afp"
 	default:
 		defaultShareType = "ftp"

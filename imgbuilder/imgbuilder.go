@@ -8,13 +8,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
 
 	"log/slog"
 
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/alessio/shellescape"
@@ -76,7 +76,7 @@ func createQEMUImg(outPath string) error {
 	outPath = filepath.Clean(outPath)
 	baseCmd := "qemu-img"
 
-	if runtime.GOOS == "windows" {
+	if osspecifics.IsWindows() {
 		baseCmd += ".exe"
 	}
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"runtime"
 	"strings"
 
+	"github.com/AlexSSD7/linsk/osspecifics"
 	"github.com/AlexSSD7/linsk/share"
 	"github.com/AlexSSD7/linsk/vm"
 	"github.com/pkg/errors"
@@ -94,7 +94,7 @@ func runVMShell(ctx context.Context, vi *vm.VM) error {
 	}()
 
 	termFDGetSize := termFD
-	if runtime.GOOS == "windows" {
+	if osspecifics.IsWindows() {
 		// Workaround for Windows.
 		termFDGetSize = int(os.Stdout.Fd())
 	}
