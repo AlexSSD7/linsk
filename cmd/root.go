@@ -66,6 +66,7 @@ func init() {
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(copyrightCmd)
 
 	rootCmd.PersistentFlags().BoolVar(&vmDebugFlag, "vm-debug", false, "Enables the VM debug mode. This will open an accessible VM monitor. You can log in with root user and no password.")
 	rootCmd.PersistentFlags().BoolVar(&unrestrictedNetworkingFlag, "vm-unrestricted-networking", false, "Enables unrestricted networking. This will allow the VM to connect to the internet.")
