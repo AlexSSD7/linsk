@@ -93,7 +93,7 @@ func runVM(passthroughArg string, fn runVMFunc, forwardPortsRules []vm.PortForwa
 			return 1
 		}
 
-		tapNameToUse, err := nettap.NewRandomTapName()
+		tapNameToUse, err := nettap.NewUniqueTapName()
 		if err != nil {
 			slog.Error("Failed to generate new network tap name", "error", err.Error())
 			return 1

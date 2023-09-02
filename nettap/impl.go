@@ -18,7 +18,7 @@ func NewTapManager(logger *slog.Logger) (*TapManager, error) {
 	return nil, ErrTapManagerUnimplemented
 }
 
-func NewRandomTapName() (string, error) {
+func NewUniqueTapName() (string, error) {
 	return "", ErrTapManagerUnimplemented
 }
 

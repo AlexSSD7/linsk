@@ -49,7 +49,7 @@ func NewTapManager(logger *slog.Logger) (*TapManager, error) {
 // We need some sort of format to avoid conflicting with other Windows interfaces.
 var tapNameRegexp = regexp.MustCompile(`^LinskTap-\d+$`)
 
-func NewRandomTapName() (string, error) {
+func NewUniqueTapName() (string, error) {
 	return fmt.Sprintf("LinskTap-%v", time.Now().UnixNano())
 }
 
