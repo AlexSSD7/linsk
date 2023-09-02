@@ -191,7 +191,7 @@ func configureVMCmdNetworking(logger *slog.Logger, cfg VMConfig, sshPort uint16)
 	ports = append(ports, cfg.ExtraPortForwardingRules...)
 
 	if cfg.UnrestrictedNetworking {
-		slog.Warn("Using unrestricted VM networking")
+		logger.Warn("Using unrestricted VM networking")
 	}
 
 	args, err := configureVMCmdUserNetwork(ports, cfg.UnrestrictedNetworking)

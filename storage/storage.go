@@ -72,7 +72,7 @@ func (s *Storage) RunCLIImageBuild(showBuilderVMDisplay bool, overwrite bool) in
 	vmImagePath := s.GetVMImagePath()
 	removed, err := checkExistsOrRemove(vmImagePath, overwrite)
 	if err != nil {
-		slog.Error("Failed to check for (and remove) existing VM image", "error", err.Error())
+		slog.Error("Failed to check for (or remove if overwrite mode is on) existing VM image", "error", err.Error())
 		return 1
 	}
 
