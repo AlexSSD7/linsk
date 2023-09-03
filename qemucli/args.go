@@ -42,10 +42,11 @@ var safeArgs = map[string]ArgAcceptedValue{
 	"netdev":  ArgAcceptedValueKeyValue,
 	"serial":  ArgAcceptedValueString,
 	"cdrom":   ArgAcceptedValueString,
-	"machine": ArgAcceptedValueString,
+	"machine": ArgAcceptedValueKeyValue,
 	"cpu":     ArgAcceptedValueString,
 	"display": ArgAcceptedValueString,
 	"drive":   ArgAcceptedValueKeyValue,
+	"bios":    ArgAcceptedValueString,
 }
 
 type Arg interface {
