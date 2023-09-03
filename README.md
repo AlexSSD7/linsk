@@ -26,27 +26,14 @@ Linsk relies on network file shares to expose files to the host machine. Below a
 * FTP - An alternative backend.
 
 # Installation
-//TODO
+
+- Windows: See [INSTALL_WINDOWS.md](INSTALL_WINDOWS.md).
+- macOS: See [INSTALL_MACOS.md](INSTALL_MACOS.md)
+- Linux (development purposes, mostly): Refer to [LINUX_DEV_ENV.md](LINUX_DEV_ENV.md).
 
 # Contributing
 
-//TODO: Make it a separate .md file.
-
-Contributions are the most welcome. Anything including small fixes is greatly appreciated.
-
-Please keep your new code consistent with the existing and follow the best practices writing Go code. Before committing, please make sure that your code passes the linting & security scanning suite.
-
-To install linting tools, execute the following commands:
-```sh
-make lint-deps
-make security-check-deps
-```
-
-After that, you will be able to run the linter and the security scanning tool.
-```sh
-make lint
-make security-check
-```
+Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 # Copyright and License
 

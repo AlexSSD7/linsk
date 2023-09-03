@@ -33,11 +33,11 @@ After that, you should be able to run `linsk`, or `~/go/bin/linsk` if you have n
 
 ## Package managers
 
-//TODO.
+TODO.
 
 ## Prebuilt binaries
 
-//TODO.
+TODO.
 
 ## Build from Source
 Clone the repository using `git` and run `go build` to build the Linsk binary.
