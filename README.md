@@ -6,7 +6,7 @@
 
 Because Linsk uses a native Linux VM, there are no limitations on what you can access. Anything that works on Linux will work under Linsk too (hence the Linux+Disk name).
 
-<!-- TODO: Telegram chat -->
+To show your thanks, please star this repository if you found it useful.
 
 # 💻 Supported platforms
 
