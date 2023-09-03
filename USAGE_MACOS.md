@@ -5,7 +5,7 @@ In this document, you will find instructions on how to get started using Linsk o
 # How Linsk works
 As you probably have realized from the initial README, Linsk takes use of a lightweight Alpine Linux virtual machine to tap into the rich world of Linux filesystems.
 
-Linsk will pass through the disk as a raw block device to an ephemeral virtual machine, set up a file share and then expose it to your host computer, along with logging the file share connection details. It's as simple as that.
+Linsk will pass through the disk as a raw block device to an ephemeral virtual machine, set up a file share, and then expose it to your host computer, along with logging the file share connection details. It's as simple as that.
 
 # Use Linsk
 
@@ -34,7 +34,7 @@ time=2023-09-03T10:33:31.718+01:00 level=INFO msg="Removed base image" caller=st
 time=2023-09-03T10:33:31.718+01:00 level=INFO msg="VM image built successfully" path=/Users/Alex/.linsk/3.18.3-x86_64-linsk1.qcow2
 ```
 
-**NOTE:** Building a VM image requires internet connection. After the initial image build is done, you can use Linsk offline.
+**NOTE:** Building a VM image requires an internet connection. After the initial image build is done, you can use Linsk offline.
 
 ## Step 1. Select the drive you want to pass through
 
@@ -43,7 +43,7 @@ Find the `/dev/` path of the drive you want to pass through by executing the fol
 diskutil list
 ```
 
-Find your disk, and take a note of the disk path that looks like `/dev/diskX` (where X is a number). We will need this in the next step.
+Find your disk, and take note of the disk path that looks like `/dev/diskX` (where X is a number). We will need this in the next step.
 
 ## Step 2. Use `linsk ls` to see what partitions are available in the VM
 
@@ -105,9 +105,9 @@ sudo linsk run dev:/dev/diskX vdb2 ext4
 ```
 
 Explanation of the command above:
-- `dev:dev/diskX` - Tell Linsk to pass through the drive path you obtained from the step 1.
-- `vdb2` - Tell Linsk to mount `/dev/vdb2` inside the filesystem. This was gathered from from the step 2.
-- `ext4` - Tell Linsk to use the Ext4 file system. As with the `vdb2`, this was acquired from the step 2. **NOTE:** Specifying the file system is **REQUIRED**—you need to explicitly tell Linsk what filesystem you want to use.
+- `dev:dev/diskX` - Tell Linsk to pass through the drive path you obtained from step 1.
+- `vdb2` - Tell Linsk to mount `/dev/vdb2` inside the filesystem. This was gathered from step 2.
+- `ext4` - Tell Linsk to use the Ext4 file system. As with the `vdb2`, this was acquired from step 2. **NOTE:** Specifying the file system is **REQUIRED**—you need to explicitly tell Linsk what filesystem you want to use.
 
 Upon running, you will see logs similar to this in your terminal:
 ```
@@ -129,7 +129,7 @@ Password: <random password>
 ===========================
 ```
 
-At this point, you can start Finder, hit Command+K and put in the server URL copied from the output above, along with a static `linsk` username and a randomly-generated password. If you need help, you can find more information on this here: https://support.apple.com/guide/mac-help/mchlp1140/mac.
+At this point, you can start Finder, hit Command+K and put in the server URL copied from the output above, along with a static `linsk` username and a randomly generated password. If you need help, you can find more information on this here: https://support.apple.com/guide/mac-help/mchlp1140/mac.
 
 **That's it!** After that, you should see the network share mounted successfully. That means that you can now access the files on the `vdb2` Ext4 volume right from your Mac.
 
@@ -137,7 +137,7 @@ The network share will remain open until you close Linsk, which you can do at an
 
 # The advanced use of Linsk
 
-The example provided above is just a mere preview of the endless power the Linsk's native Linux VM has.
+The example provided above is just a mere preview of the endless power Linsk's native Linux VM has.
 
 ## Use LVM
 
