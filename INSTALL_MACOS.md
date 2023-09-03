@@ -7,14 +7,14 @@ Here you will find the instructions on how you can install Linsk on macOS.
 Linsk aims to have minimal dependencies. In this section, you can find the instructions to install the required dependencies.
 
 ## QEMU
-QEMU powers the Linsk's virtual machine. This is the sole requirement.
+QEMU is what Linsk uses to run virtual machines.
 
 The easiest way to install QEMU on macOS is to use `brew` package manager.
 ```sh
 brew install qemu
 ```
 
-## (Optional) Go
+## (Optional) Go v1.21 or higher
 **OPTIONAL:** You need to install Go only if you want to use `go install` installation method or build Linsk from the bare Git repository.
 
 You can find the installer on Go's official website: https://go.dev/dl/.

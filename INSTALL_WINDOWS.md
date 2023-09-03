@@ -6,8 +6,12 @@ Here you will find the instructions on how you can install Linsk on Windows.
 
 Linsk aims to have minimal dependencies. In this section, you can find the instructions to install the required dependencies.
 
+## Enable virtualization
+
+You will need to enable virtualization in your OS, and in most cases in BIOS too. This is required to run a virtual machine on your computer. You can find the instructions how to do it here: https://support.microsoft.com/en-us/windows/enable-virtualization-on-windows-11-pcs-c5578302-6e43-4b4b-a449-8ced115f58e1.
+
 ## QEMU
-QEMU powers the Linsk's virtual machine.
+QEMU is what Linsk uses to run virtual machines.
 
 The easiest way to install QEMU on Windows is to use the official installer binaries. You can find them here: https://www.qemu.org/download/#windows.
 
@@ -16,7 +20,7 @@ Linsk takes use of OpenVPN's tap networking drivers to allow for direct host-VM 
 
 The easiest way to get these drivers is to use OpenVPN Community installer: https://openvpn.net/community-downloads/.
 
-## (Optional) Go
+## (Optional) Go v1.21 or higher
 **OPTIONAL:** You need to install Go only if you want to use `go install` installation method or build Linsk from the bare Git repository.
 
 You can find the installer on Go's official website: https://go.dev/dl/.

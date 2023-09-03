@@ -4,6 +4,25 @@ Linsk is a utility that allows you to access Linux-native file system infrastruc
 
 Because Linsk uses a native Linux VM, there are no limitations on what you can access. Anything that works on Linux will work under Linsk too (hence the Linux+Disk name).
 
+# Supported platforms
+
+## CPU architectures
+Linsk natively supports both amd64 (aka x86_64, Intel, AMD, etc.) and arm64 (aka aarch64, Apple M1/M2, and others). Although Linsk uses a virtual machine, CPU is never emulated but hardware accelerators like HVF (macOS), WHPX (Windows), and KVM (Linux) are used.
+
+## Operating systems
+
+* Windows
+* macOS
+* Linux (for development purposes, mostly)
+
+## Network file share backends
+
+Linsk relies on network file shares to expose files to the host machine. Below are the types of network shares Linsk supports:
+
+* SMB - The default for Windows.
+* AFP - The default for macOS.
+* FTP - An alternative backend.
+
 # Installation
 //TODO
 
