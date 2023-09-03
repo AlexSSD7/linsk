@@ -6,7 +6,7 @@ Yes, you read that right. For development purposes, Linsk remains 100% supported
 
 ## QEMU
 
-On Ubuntu (and probably on any other Debian-based distro) you can install the required `qemu-system-$(arch)` binary by running the following:
+On Ubuntu (and probably on any other Debian-based distro), you can install the required `qemu-system-$(arch)` binary by running the following:
 ```sh
 apt install qemu-system
 ```
@@ -27,7 +27,3 @@ go build
 ```
 
 After that is done, you will be able to find the `linsk` binary in the same directory you ran `go build` in.
-
-# The next steps
-
-That's it. You can follow the further usage instructions set in TODO just like with any other OS.

@@ -67,10 +67,6 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 	var accel []qemucli.KeyValueArgItem
 	switch {
 	case osspecifics.IsWindows():
-		// TODO: To document: For Windows, we need to install QEMU using an installer and add it to PATH.
-		// Then, we should enable Windows Hypervisor Platform in "Turn Windows features on or off".
-		// IMPORTANT: We should also install libusbK drivers for USB devices we want to pass through.
-		// This can be easily done with a program called Zadiag by Akeo.
 		accel = []qemucli.KeyValueArgItem{
 			{Key: "whpx"},
 			{Key: "kernel-irqchip", Value: "off"},

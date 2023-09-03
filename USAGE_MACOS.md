@@ -179,6 +179,6 @@ Password: <random password>
 
 This example showed how you can use LUKS with LVM2 volumes, but that doesn't mean that you can't use volumes without LVM. You can specify plain device paths like `vdb3` without any issue.
 
-# How to investigate in case something goes wrong
+# Troubleshooting
 
-<!-- TODO: Include a link to a DEBUGGING.md file -->
+Please refer to [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
