@@ -69,11 +69,6 @@ func NewKeyValueArg(key string, items []KeyValueArgItem) (*KeyValueArg, error) {
 			return nil, fmt.Errorf("empty key not allowed")
 		}
 
-		if len(item.Value) == 0 {
-			// Values *can* be empty, though. We do not allow them for consistency.
-			return nil, fmt.Errorf("empty value for key '%v' is not allowed", item.Key)
-		}
-
 		err := validateArgStrValue(item.Key)
 		if err != nil {
 			return nil, errors.Wrapf(err, "validate key '%v'", item.Key)

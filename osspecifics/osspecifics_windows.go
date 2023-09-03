@@ -40,8 +40,8 @@ func TerminateProcess(pid int) error {
 	return exec.Command("TASKKILL", "/T", "/F", "/PID", fmt.Sprint(pid)).Run()
 }
 
-var physicalDriveCheckRegexp = regexp.MustCompile(`^\\\\.\\PhysicalDrive(\d+)$`)
-var physicalDriveFindRegexp = regexp.MustCompile(`PhysicalDrive(\d+)`)
+var physicalDriveCheckRegexp = regexp.MustCompile(`(?i)^\\\\.\\PhysicalDrive(\d+)$`)
+var physicalDriveFindRegexp = regexp.MustCompile(`(?i)PhysicalDrive(\d+)`)
 
 // This is never used except for a band-aid that would check
 // that there are no double-mounts.

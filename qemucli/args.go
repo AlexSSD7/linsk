@@ -34,7 +34,7 @@ const (
 )
 
 var safeArgs = map[string]ArgAcceptedValue{
-	"accel":   ArgAcceptedValueString,
+	"accel":   ArgAcceptedValueKeyValue,
 	"boot":    ArgAcceptedValueString,
 	"m":       ArgAcceptedValueUint,
 	"smp":     ArgAcceptedValueUint,

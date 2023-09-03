@@ -45,5 +45,9 @@ func validateArgStrValue(s string) error {
 		return fmt.Errorf("backslashes are not allowed")
 	}
 
+	if strings.Contains(s, "=") {
+		return fmt.Errorf("equals sign is not allowed")
+	}
+
 	return nil
 }

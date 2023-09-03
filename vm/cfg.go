@@ -35,10 +35,12 @@ import (
 )
 
 func getUniqueQEMUNetID() string {
+	time.Sleep(time.Millisecond)
 	return "net" + utils.IntToStr(time.Now().UnixNano())
 }
 
 func getUniqueQEMUDriveID() string {
+	time.Sleep(time.Millisecond)
 	return "drive" + utils.IntToStr(time.Now().UnixNano())
 }
 
@@ -56,28 +58,31 @@ func cleanQEMUPath(s string) string {
 func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg, error) {
 	baseCmd := "qemu-system"
 
-	if osspecifics.IsWindows() {
-		baseCmd += ".exe"
-	}
-
 	args := []qemucli.Arg{
 		qemucli.MustNewStringArg("serial", "stdio"),
 		qemucli.MustNewUintArg("m", cfg.MemoryAlloc),
 		qemucli.MustNewUintArg("smp", runtime.NumCPU()),
 	}
 
-	var accel string
+	var accel []qemucli.KeyValueArgItem
 	switch {
 	case osspecifics.IsWindows():
 		// TODO: To document: For Windows, we need to install QEMU using an installer and add it to PATH.
 		// Then, we should enable Windows Hypervisor Platform in "Turn Windows features on or off".
 		// IMPORTANT: We should also install libusbK drivers for USB devices we want to pass through.
 		// This can be easily done with a program called Zadiag by Akeo.
-		accel = "whpx,kernel-irqchip=off"
+		accel = []qemucli.KeyValueArgItem{
+			{Key: "whpx"},
+			{Key: "kernel-irqchip", Value: "off"},
+		}
 	case osspecifics.IsMacOS():
-		accel = "hvf"
+		accel = []qemucli.KeyValueArgItem{{
+			Key: "hvf",
+		}}
 	default:
-		accel = "kvm"
+		accel = []qemucli.KeyValueArgItem{{
+			Key: "kvm",
+		}}
 	}
 
 	switch runtime.GOARCH {
@@ -102,7 +107,7 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 		return "", nil, fmt.Errorf("arch '%v' is not supported", runtime.GOARCH)
 	}
 
-	args = append(args, qemucli.MustNewStringArg("accel", accel))
+	args = append(args, qemucli.MustNewKeyValueArg("accel", accel))
 
 	if cfg.BIOSPath != "" {
 		biosPath := cleanQEMUPath(cfg.BIOSPath)
@@ -128,6 +133,10 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 		}
 
 		args = append(args, cdromArg, qemucli.MustNewStringArg("boot", "d"))
+	}
+
+	if osspecifics.IsWindows() {
+		baseCmd += ".exe"
 	}
 
 	return baseCmd, args, nil

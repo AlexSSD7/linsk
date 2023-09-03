@@ -28,11 +28,12 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	"github.com/AlexSSD7/linsk/utils"
 	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"golang.org/x/exp/slog"
 )
 
 func Available() bool {
@@ -66,7 +67,8 @@ func NewTapManager(logger *slog.Logger) (*TapManager, error) {
 var tapNameRegexp = regexp.MustCompile(`^LinskTap-\d+$`)
 
 func NewUniqueTapName() (string, error) {
-	return fmt.Sprintf("LinskTap-%v", time.Now().UnixNano())
+	time.Sleep(time.Millisecond)
+	return fmt.Sprintf("LinskTap-%v", time.Now().UnixNano()), nil
 }
 
 func (tm *TapManager) CreateNewTap(tapName string) error {
