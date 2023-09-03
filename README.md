@@ -8,6 +8,8 @@ Because Linsk uses a native Linux VM, there are no limitations on what you can a
 
 To show your thanks, please star this repository if you found it useful.
 
+<!-- TODO: Screenshot -->
+
 # 💻 Supported platforms
 
 ## CPU architectures
@@ -34,6 +36,11 @@ Linsk relies on network file shares to expose files to the host machine. Below a
 - **Windows** - See [INSTALL_WINDOWS.md](INSTALL_WINDOWS.md).
 - **macOS** - See [INSTALL_MACOS.md](INSTALL_MACOS.md).
 - **Linux** - Refer to [LINUX_DEV_ENV.md](LINUX_DEV_ENV.md).
+
+# 🔧 Usage
+
+- **Windows** - See [USAGE_WINDOWS.md](USAGE_WINDOWS.md).
+- **macOS** - See [USAGE_MACOS.md](USAGE_MACOS.md).
 
 # 👨‍💻 Contributing
 
