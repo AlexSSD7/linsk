@@ -129,11 +129,9 @@ Password: <random password>
 ===========================
 ```
 
-<!-- TODO: Screenshots? -->
-
 At this point, you can start Finder, hit Command+K and put in the server URL copied from the output above, along with a static `linsk` username and a randomly-generated password. If you need help, you can find more information on this here: https://support.apple.com/guide/mac-help/mchlp1140/mac.
 
-**That's it!** After that, you should see the network share mounted successfully. That means that you can now access the files on `vdb2` Ext4 volume right from your Mac.
+**That's it!** After that, you should see the network share mounted successfully. That means that you can now access the files on the `vdb2` Ext4 volume right from your Mac.
 
 The network share will remain open until you close Linsk, which you can do at any time by hitting Ctrl+C.
 
@@ -144,14 +142,14 @@ The example provided above is just a mere preview of the endless power the Linsk
 ## Use LVM
 
 Linsk supports LVM2. You can mount LVM2 drives by specifying `mapper/<device name>` as the VM device name. Let's assume that you want to mount `vghdd-media` with XFS filesystem you found in the `linsk ls` output above. To do so, you may run:
-```
+```sh
 sudo linsk run dev:/dev/diskX mapper/vghdd-media xfs
 ```
 
 ## Use LUKS with `cryptsetup`
 
 As well as with LVM2, LUKS via `cryptsetup` is natively supported by Linsk. To mount LUKS volumes, you may specify the `-l` flag in `linsk run` command. Let's assume that we want to access LUKS-encrypted volume `vghdd-archive` we found in the `linsk ls` example provided in step 2. To mount it, you may execute:
-```
+```sh
 sudo linsk run -l dev:/dev/diskX mapper/vghdd-archive ext4
 ```
 
@@ -179,7 +177,7 @@ Password: <random password>
 ===========================
 ```
 
-This example showed how you can use LUKS with LVM2 volumes, but that doesn't mean that you can't use volumes without LVM. You can specify plain device paths like `/dev/vdb3` without any issue.
+This example showed how you can use LUKS with LVM2 volumes, but that doesn't mean that you can't use volumes without LVM. You can specify plain device paths like `vdb3` without any issue.
 
 # How to investigate in case something goes wrong
 

@@ -49,7 +49,8 @@ Find your disk, and take a note of the disk path that looks like `\\.\PhysicalDr
 
 Run `linsk ls` while specifying the block device path you obtained in the previous step:
 ```powershell
-sudo linsk ls dev:\\.\PhysicalDriveX
+# This should be run in a terminal open with administrator privileges.
+linsk ls dev:\\.\PhysicalDriveX
 ```
 
 You will then see something like this:
@@ -101,7 +102,8 @@ You should ignore `vda` drive as this is the system drive you have the Alpine Li
 Let's assume that we decided to run Linsk with the `vdb2` `ext4` volume we found in the previous step. To do so, you may execute the following command:
 
 ```powershell
-sudo linsk run dev:\\.\PhysicalDriveX vdb2 ext4
+# This should be run in a terminal open with administrator privileges.
+linsk run dev:\\.\PhysicalDriveX vdb2 ext4
 ```
 
 Explanation of the command above:
@@ -128,3 +130,59 @@ Username: linsk
 Password: <random password>
 ===========================
 ```
+
+At this point, you can open the file explorer -> Right-click "This PC" -> Show more options (if you're on Windows 11) -> Map network drive. Afterward, you should specify the share URL (the one that starts with `\\`), the static `linsk` username, and a randomly-generated password.
+
+**That's it!** After that, you should see the network share mounted successfully. That means that you can now access the files on the `vdb2` Ext4 volume right from your Mac.
+
+The network share will remain open until you close Linsk, which you can do at any time by hitting Ctrl+C.
+
+# The advanced use of Linsk
+
+The example provided above is just a mere preview of the endless power the Linsk's native Linux VM has.
+
+## Use LVM
+
+Linsk supports LVM2. You can mount LVM2 drives by specifying `mapper/<device name>` as the VM device name. Let's assume that you want to mount `vghdd-media` with XFS filesystem you found in the `linsk ls` output above. To do so, you may run:
+```powershell
+# This should be run in a terminal open with administrator privileges.
+linsk run dev:\\.\PhysicalDriveX mapper/vghdd-media xfs
+```
+
+## Use LUKS with `cryptsetup`
+
+As well as with LVM2, LUKS via `cryptsetup` is natively supported by Linsk. To mount LUKS volumes, you may specify the `-l` flag in `linsk run` command. Let's assume that we want to access LUKS-encrypted volume `vghdd-archive` we found in the `linsk ls` example provided in step 2. To mount it, you may execute:
+```powershell
+# This should be run in a terminal open with administrator privileges.
+linsk run -l dev:\\.\PhysicalDriveX mapper/vghdd-archive ext4
+```
+
+`-l` flag tells Linsk that it is a LUKS volume, and Linsk will prompt you for the password. Combined, your terminal will look like this:
+
+```
+# linsk command output
+time=2023-09-03T11:44:55.962+01:00 level=WARN msg="Using raw block device passthrough. Please note that it's YOUR responsibility to ensure that no device is mounted in your OS and the VM at the same time. Otherwise, you run serious risks. No further warnings will be issued." caller=vm
+time=2023-09-03T11:44:55.964+01:00 level=INFO msg="Booting the VM" caller=vm
+time=2023-09-03T11:45:05.975+01:00 level=INFO msg="The VM is up, setting it up" caller=vm
+time=2023-09-03T11:45:08.472+01:00 level=INFO msg="The VM is ready" caller=vm
+time=2023-09-03T11:45:08.709+01:00 level=INFO msg="Mounting the device" dev=mapper/vghdd-archive fs=ext4 luks=true
+time=2023-09-03T11:45:08.740+01:00 level=INFO msg="Attempting to open a LUKS device" caller=file-manager vm-path=/dev/mapper/vghdd-archive
+Enter Password: <you will get prompted for the password here>
+time=2023-09-03T11:46:08.444+01:00 level=INFO msg="LUKS device opened successfully" caller=file-manager vm-path=/dev/mapper/vghdd-archive
+time=2023-09-03T11:46:08.642+01:00 level=INFO msg="Started the network share successfully" backend=smb
+===========================
+[Network File Share Config]
+The network file share was started. Please use the credentials below to connect to the file server.
+
+Type: SMB
+URL: \\fe8f-5980-3253-7df4-f4b-6db1-5d59-bc77.ipv6-literal.net\linsk
+Username: linsk
+Password: <random password>
+===========================
+```
+
+This example showed how you can use LUKS with LVM2 volumes, but that doesn't mean that you can't use volumes without LVM. You can specify plain device paths like `vdb3` without any issue.
+
+# How to investigate in case something goes wrong
+
+<!-- TODO: Include a link to a DEBUGGING.md file -->
