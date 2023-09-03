@@ -8,7 +8,7 @@ Because Linsk uses a native Linux VM, there are no limitations on what you can a
 
 To show your thanks, please star this repository if you found it useful.
 
-<!-- TODO: Screenshot -->
+![Screenshot of Linsk running](./assets/screenshot.png)
 
 # 💻 Supported platforms
 
