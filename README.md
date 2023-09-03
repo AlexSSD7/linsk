@@ -1,5 +1,7 @@
 # Linsk
 
+<a href="https://t.me/linsk_foss"><img src="https://badgen.net/static/chat/telegram/229ED9"/></a>
+
 **Linsk** is a utility that allows you to access Linux-native file system infrastructure, including LVM and LUKS on Windows and macOS. Unlike other solutions created to access Linux filesystems on unsupported operating systems, Linsk does not reimplement any file system. Instead, Linsk utilizes a lightweight Alpine Linux VM (~130 MB only) combined with network share technologies like SMB, AFP, and FTP.
 
 Because Linsk uses a native Linux VM, there are no limitations on what you can access. Anything that works on Linux will work under Linsk too (hence the Linux+Disk name).
