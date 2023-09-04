@@ -12,11 +12,16 @@ if [ -z "$version" ]; then
 fi
 
 function build() {
-    file_name="linsk_${1}_${2}_${version}"
-    CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -o build/$file_name
+    name="linsk_${1}_${2}_${version}"
+    binary_name="$name"
+    if [ $1 == "windows" ]; then
+        binary_name="$binary_name.exe"
+    fi
+    
+    CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -o build/$binary_name
     cd build
-    zip $file_name.zip $file_name
-    rm $file_name
+    zip $name.zip $binary_name
+    rm $binary_name
     cd ..
 }
 
