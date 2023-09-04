@@ -183,6 +183,12 @@ Password: <random password>
 
 This example showed how you can use LUKS with LVM2 volumes, but that doesn't mean that you can't use volumes without LVM. You can specify plain device paths like `vdb3` without any issue.
 
+# FAQ
+
+### How do I format disks with Linsk?
+
+Use `linsk shell`. Please see [SHELL.md](SHELL.md).
+
 # Troubleshooting
 
 Please refer to [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
