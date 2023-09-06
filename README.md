@@ -1,54 +1,52 @@
 # Linsk
 
-Linsk is a utility that allows you to access Linux-native file system infrastructure, including LVM and LUKS on Windows and macOS. Unlike other solutions created to access Linux filesystems on unsupported operating systems, Linsk does not reimplement any file system. Instead, Linsk utilizes a lightweight Alpine Linux VM (~130 MB only) combined with network share technologies like SMB, AFP, and FTP.
+<a href="https://t.me/linsk_foss"><img src="https://badgen.net/static/chat/telegram/229ED9"/></a>
+
+**Linsk** is a utility that allows you to access Linux-native file system infrastructure, including LVM and LUKS on Windows and macOS. Unlike other solutions created to access Linux filesystems on unsupported operating systems, Linsk does not reimplement any file system. Instead, Linsk utilizes a lightweight Alpine Linux VM (~130 MB only) combined with network share technologies like SMB, AFP, and FTP.
 
 Because Linsk uses a native Linux VM, there are no limitations on what you can access. Anything that works on Linux will work under Linsk too (hence the Linux+Disk name).
 
-<!-- TODO: Telegram chat -->
+To show your thanks, please star this repository if you found it useful.
 
-# Supported platforms
+![Screenshot of Linsk running](./assets/screenshot.png)
+
+# 💻 Supported platforms
 
 ## CPU architectures
-Linsk natively supports both amd64 (aka x86_64, Intel, AMD, etc.) and arm64 (aka aarch64, Apple M1/M2, and others). Although Linsk uses a virtual machine, CPU is never emulated but hardware accelerators like HVF (macOS), WHPX (Windows), and KVM (Linux) are used.
+Linsk natively supports both **x86_64** (aka amd64, Intel, AMD, etc.) and **aarch64** (aka arm64, Apple M1/M2, and others).
+
+Although Linsk uses a virtual machine, the CPU is never emulated but the hardware accelerators like HVF (macOS), WHPX (Windows), and KVM (Linux) are used.
 
 ## Operating systems
 
-* Windows
-* macOS
-* Linux (for development purposes, mostly)
+* **Windows**
+* **macOS**
+* **Linux** (for development purposes, mostly)
 
 ## Network file share backends
 
 Linsk relies on network file shares to expose files to the host machine. Below are the types of network shares Linsk supports:
 
-* SMB - The default for Windows.
-* AFP - The default for macOS.
-* FTP - An alternative backend.
+* **SMB** - The default for Windows.
+* **AFP** - The default for macOS.
+* **FTP** - An alternative backend.
 
-# Installation
-//TODO
+# 💿 Installation
 
-# Contributing
+- **Windows** - See [INSTALL_WINDOWS.md](INSTALL_WINDOWS.md).
+- **macOS** - See [INSTALL_MACOS.md](INSTALL_MACOS.md).
+- **Linux** - Refer to [LINUX_DEV_ENV.md](LINUX_DEV_ENV.md).
 
-//TODO: Make it a separate .md file.
+# 🔧 Usage
 
-Contributions are the most welcome. Anything including small fixes is greatly appreciated.
+- **Windows** - See [USAGE_WINDOWS.md](USAGE_WINDOWS.md).
+- **macOS** - See [USAGE_MACOS.md](USAGE_MACOS.md).
 
-Please keep your new code consistent with the existing and follow the best practices writing Go code. Before committing, please make sure that your code passes the linting & security scanning suite.
+# 👨‍💻 Contributing
 
-To install linting tools, execute the following commands:
-```sh
-make lint-deps
-make security-check-deps
-```
+Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-After that, you will be able to run the linter and the security scanning tool.
-```sh
-make lint
-make security-check
-```
-
-# Copyright and License
+# ©️ Copyright and License
 
 Copyright (c) 2023 The Linsk Authors.
 

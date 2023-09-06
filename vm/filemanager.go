@@ -113,7 +113,7 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
 			return errors.Wrap(err, "write prompt to stderr")
 		}
 
-		pwd, err := term.ReadPassword(int(syscall.Stdin))
+		pwd, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert // On Windows it's a different non-int type.
 		if err != nil {
 			return errors.Wrap(err, "read luks password")
 		}

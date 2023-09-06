@@ -99,7 +99,9 @@ func NewSSHSessionWithDelayedTimeout(ctx context.Context, timeout time.Duration,
 		go func() {
 			select {
 			case <-time.After(timeout):
-				preTimeout()
+				if preTimeout != nil {
+					preTimeout()
+				}
 				timedOut = true
 				_ = sc.Close()
 			case <-done:

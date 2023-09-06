@@ -42,11 +42,11 @@ After that, you should be able to run `linsk`, or `%USERPROFILE%\go\bin\linsk.ex
 
 ## Package managers
 
-//TODO.
+TODO.
 
 ## Prebuilt binaries
 
-//TODO.
+You can find prebuilt binaries in [Linsk GitHub Releases](https://github.com/AlexSSD7/linsk/releases).
 
 ## Build from Source
 Clone the repository using `git` and run `go build` to build the Linsk binary.
