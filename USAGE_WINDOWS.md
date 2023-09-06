@@ -45,6 +45,8 @@ wmic diskdrive list brief
 
 Find your disk, and take note of the disk path that looks like `\\.\PhysicalDriveX` (where X is a number). We will need this in the next step.
 
+**IMPORTANT NOTE:** Please ensure that the physical device you are trying to pass through is not mounted anywhere else on the host machine. Otherwise, you run serious risks. No further warnings will be issued.
+
 ## Step 2. Use `linsk ls` to see what partitions are available in the VM
 
 Run `linsk ls` while specifying the block device path you obtained in the previous step:
