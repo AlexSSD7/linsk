@@ -15,6 +15,8 @@ QEMU is what Linsk uses to run virtual machines.
 
 The easiest way to install QEMU on Windows is to use the official installer binaries. You can find them here: https://www.qemu.org/download/#windows.
 
+After the installation is complete, you will need to add `C:\Program Files\qemu` to PATH. Here's a guide: https://www.howtogeek.com/118594/how-to-edit-your-system-path-for-easy-command-line-access/.
+
 ## OpenVPN Tap Networking Drivers
 Linsk takes use of OpenVPN's tap networking drivers to allow for direct host-VM communication over a virtual network.
 
