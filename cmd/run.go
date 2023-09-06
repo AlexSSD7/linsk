@@ -83,10 +83,15 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
-			sharePWD, err := password.Generate(16, 10, 0, false, false)
-			if err != nil {
-				slog.Error("Failed to generate ephemeral password for the network file share", "error", err.Error())
-				return 1
+			sharePWD := sharePasswordFlag
+
+			if sharePWD == "" {
+				var err error
+				sharePWD, err = password.Generate(16, 10, 0, false, false)
+				if err != nil {
+					slog.Error("Failed to generate ephemeral password for the network file share", "error", err.Error())
+					return 1
+				}
 			}
 
 			lg := slog.With("backend", shareBackendFlag)
@@ -130,6 +135,7 @@ var (
 	luksFlag               bool
 	allowLUKSLowMemoryFlag bool
 	shareListenIPFlag      string
+	sharePasswordFlag      string
 	ftpExtIPFlag           string
 	shareBackendFlag       string
 	smbUseExternAddrFlag   bool
@@ -153,6 +159,7 @@ func init() {
 
 	runCmd.Flags().StringVar(&shareBackendFlag, "share-backend", defaultShareType, `Specifies the file share backend to use. The default value is OS-specific. (available "smb", "afp", "ftp")`)
 	runCmd.Flags().StringVar(&shareListenIPFlag, "share-listen", share.GetDefaultListenIPStr(), "Specifies the IP to bind the network share port to. NOTE: For FTP, changing the bind address is not enough to connect remotely. You should also specify --ftp-extip.")
+	runCmd.Flags().StringVar(&sharePasswordFlag, "share-password", "", "Specifies a fixed password to connect to the share, when applicable.")
 
 	runCmd.Flags().StringVar(&ftpExtIPFlag, "ftp-extip", share.GetDefaultListenIPStr(), "Specifies the external IP the FTP server should advertise.")
 	runCmd.Flags().BoolVar(&smbUseExternAddrFlag, "smb-extern", share.IsSMBExtModeDefault(), "Specifies whether Linsk emulate external networking for the VM's SMB server. This is the default for Windows as there is no way to specify ports in Windows SMB client.")
