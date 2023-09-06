@@ -206,7 +206,7 @@ func runVM(passthroughArg string, fn runvm.Func, forwardPortsRules []vm.PortForw
 		OSUpTimeout:  time.Duration(vmOSUpTimeoutFlag) * time.Second,
 		SSHUpTimeout: time.Duration(vmSSHSetupTimeoutFlag) * time.Second,
 
-		ShowDisplay: vmDebugFlag,
+		Debug: vmDebugFlag,
 	}
 
 	vi, err := vm.NewVM(slog.Default().With("caller", "vm"), vmCfg)

@@ -115,7 +115,7 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 		args = append(args, biosArg)
 	}
 
-	if !cfg.ShowDisplay {
+	if !cfg.Debug {
 		args = append(args, qemucli.MustNewStringArg("display", "none"))
 	}
 

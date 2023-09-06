@@ -43,7 +43,7 @@ type BuildContext struct {
 	vi *vm.VM
 }
 
-func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, showVMDisplay bool, biosPath string) (*BuildContext, error) {
+func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, debug bool, biosPath string) (*BuildContext, error) {
 	baseISOPath = filepath.Clean(baseISOPath)
 	outPath = filepath.Clean(outPath)
 
@@ -73,7 +73,7 @@ func NewBuildContext(logger *slog.Logger, baseISOPath string, outPath string, sh
 		MemoryAlloc: 512,
 
 		UnrestrictedNetworking: true,
-		ShowDisplay:            showVMDisplay,
+		Debug:                  debug,
 		InstallBaseUtilities:   true,
 	})
 	if err != nil {

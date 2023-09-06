@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"sync/atomic"
@@ -99,7 +100,7 @@ type Config struct {
 	SSHUpTimeout time.Duration
 
 	// Mostly debug-related options.
-	ShowDisplay          bool
+	Debug                bool // This will show the display and forward all QEMU warnings/errors to stderr.
 	InstallBaseUtilities bool
 }
 
@@ -175,6 +176,10 @@ func NewVM(logger *slog.Logger, cfg Config) (*VM, error) {
 	cmd.Stdout = sysWrite
 	stderrBuf := bytes.NewBuffer(nil)
 	cmd.Stderr = stderrBuf
+
+	if cfg.Debug {
+		cmd.Stderr = io.MultiWriter(cmd.Stderr, os.Stderr)
+	}
 
 	// This function is OS-specific.
 	osspecifics.SetNewProcessGroupCmd(cmd)
