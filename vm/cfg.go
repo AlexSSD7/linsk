@@ -331,7 +331,6 @@ func configureVMCmdBlockDevicePassthrough(logger *slog.Logger, cfg Config) ([]qe
 			{Key: "file", Value: devPath},
 			{Key: "format", Value: "raw"},
 			{Key: "if", Value: "virtio"},
-			{Key: "cache", Value: "none"},
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "create drive key-value arg (path '%v')", devPath)
