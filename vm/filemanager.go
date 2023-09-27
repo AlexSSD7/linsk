@@ -169,6 +169,39 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string, luksDMName s
 	})
 }
 
+func (fm *FileManager) PreopenLUKSContainer(containerDevPath string) error {
+	sc, err := fm.vm.DialSSH()
+	if err != nil {
+		return errors.Wrap(err, "dial vm ssh")
+	}
+
+	defer func() { _ = sc.Close() }()
+
+	return fm.preopenLUKSContainerWithSSH(sc, containerDevPath)
+}
+
+func (fm *FileManager) preopenLUKSContainerWithSSH(sc *ssh.Client, containerDevPath string) error {
+	if !utils.ValidateDevName(containerDevPath) {
+		return fmt.Errorf("bad luks container device name")
+	}
+
+	fullContainerDevPath := "/dev/" + containerDevPath
+
+	fm.logger.Info("Preopening a LUKS container", "container", fullContainerDevPath)
+
+	err := fm.luksOpen(sc, fullContainerDevPath, "cryptcontainer")
+	if err != nil {
+		return errors.Wrap(err, "luks (pre)open container")
+	}
+
+	err = fm.InitLVM()
+	if err != nil {
+		return errors.Wrap(err, "reinit lvm")
+	}
+
+	return nil
+}
+
 func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	if devName == "" {
 		return fmt.Errorf("device name is empty")
@@ -204,22 +237,9 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	defer func() { _ = sc.Close() }()
 
 	if mo.LUKSContainerPreopen != "" {
-		if !utils.ValidateDevName(mo.LUKSContainerPreopen) {
-			return fmt.Errorf("bad luks container device name")
-		}
-
-		fullContainerDevPath := "/dev/" + mo.LUKSContainerPreopen
-
-		fm.logger.Info("Preopening a LUKS container", "container", fullContainerDevPath)
-
-		err := fm.luksOpen(sc, fullContainerDevPath, "cryptcontainer")
+		err := fm.preopenLUKSContainerWithSSH(sc, mo.LUKSContainerPreopen)
 		if err != nil {
-			return errors.Wrap(err, "luks (pre)open container")
-		}
-
-		err = fm.InitLVM()
-		if err != nil {
-			return errors.Wrap(err, "reinit lvm")
+			return errors.Wrap(err, "preopen luks container")
 		}
 	}
 

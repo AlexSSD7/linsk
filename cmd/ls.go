@@ -32,7 +32,17 @@ var lsCmd = &cobra.Command{
 	Short: "Start a VM and list all user drives within the VM. Uses lsblk command under the hood.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		configureVMRuntimeFlags()
+
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, trc *share.NetTapRuntimeContext) int {
+			if vmRuntimeLUKSContainerDevice != "" {
+				err := fm.PreopenLUKSContainer(vmRuntimeLUKSContainerDevice)
+				if err != nil {
+					slog.Error("Failed to preopen LUKS container", "error", err.Error())
+					return 1
+				}
+			}
+
 			lsblkOut, err := fm.Lsblk()
 			if err != nil {
 				slog.Error("Failed to list block devices in the VM", "error", err.Error())
@@ -48,4 +58,8 @@ var lsCmd = &cobra.Command{
 			return 0
 		}, nil, false, false))
 	},
+}
+
+func init() {
+	initVMRuntimeFlags(lsCmd.Flags())
 }
