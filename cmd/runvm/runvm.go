@@ -93,9 +93,9 @@ func RunVM(vi *vm.VM, initFileManager bool, tapRuntimeCtx *share.NetTapRuntimeCo
 			return 1
 		case <-vi.SSHUpNotifyChan():
 			if fm != nil {
-				err := fm.Init()
+				err := fm.InitLVM()
 				if err != nil {
-					slog.Error("Failed to initialize File Manager", "error", err.Error())
+					slog.Error("Failed to initialize File Manager LVM", "error", err.Error())
 					return 1
 				}
 			}

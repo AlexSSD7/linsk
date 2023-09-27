@@ -52,7 +52,7 @@ func NewFileManager(logger *slog.Logger, vm *VM) *FileManager {
 	}
 }
 
-func (fm *FileManager) Init() error {
+func (fm *FileManager) InitLVM() error {
 	sc, err := fm.vm.DialSSH()
 	if err != nil {
 		return errors.Wrap(err, "dial vm ssh")
@@ -83,13 +83,13 @@ func (fm *FileManager) Lsblk() ([]byte, error) {
 }
 
 type MountOptions struct {
+	LUKSContainerPreopen string
+
 	FSType string
 	LUKS   bool
 }
 
-const luksDMName = "cryptmnt"
-
-func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string) error {
+func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string, luksDMName string) error {
 	lg := fm.logger.With("vm-path", fullDevPath)
 
 	return sshutil.NewSSHSessionWithDelayedTimeout(fm.vm.ctx, time.Second*15, sc, func(sess *ssh.Session, startTimeout func(preTimeout func())) error {
@@ -197,8 +197,30 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 
 	defer func() { _ = sc.Close() }()
 
+	if mo.LUKSContainerPreopen != "" {
+		if !utils.ValidateDevName(mo.LUKSContainerPreopen) {
+			return fmt.Errorf("bad luks container device name")
+		}
+
+		fullContainerDevPath := "/dev/" + mo.LUKSContainerPreopen
+
+		fm.logger.Info("Preopening a LUKS container", "container", fullContainerDevPath)
+
+		err := fm.luksOpen(sc, fullContainerDevPath, "cryptcontainer")
+		if err != nil {
+			return errors.Wrap(err, "luks (pre)open container")
+		}
+
+		err = fm.InitLVM()
+		if err != nil {
+			return errors.Wrap(err, "reinit lvm")
+		}
+	}
+
 	if mo.LUKS {
-		err = fm.luksOpen(sc, fullDevPath)
+		luksDMName := "cryptmnt"
+
+		err = fm.luksOpen(sc, fullDevPath, luksDMName)
 		if err != nil {
 			return errors.Wrap(err, "luks open")
 		}

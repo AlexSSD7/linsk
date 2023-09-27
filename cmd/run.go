@@ -61,8 +61,8 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if luksFlag && !allowLUKSLowMemoryFlag {
-			if vmMemAllocFlag < 2048 {
+		if (luksFlag || luksContainerFlag != "") && !allowLUKSLowMemoryFlag {
+			if vmMemAllocFlag < defaultMemAllocLUKS {
 				if vmMemAllocFlag != defaultMemAlloc {
 					slog.Warn("Enforcing minimum LUKS memory allocation. Please add --allow-luks-low-memory to disable this.", "min", vmMemAllocFlag, "specified", vmMemAllocFlag)
 				}
@@ -75,6 +75,8 @@ var runCmd = &cobra.Command{
 			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsType, "luks", luksFlag)
 
 			err := fm.Mount(vmMountDevName, vm.MountOptions{
+				LUKSContainerPreopen: luksContainerFlag,
+
 				FSType: fsType,
 				LUKS:   luksFlag,
 			})
@@ -128,6 +130,7 @@ var runCmd = &cobra.Command{
 
 var (
 	luksFlag               bool
+	luksContainerFlag      string
 	allowLUKSLowMemoryFlag bool
 	shareListenIPFlag      string
 	ftpExtIPFlag           string
@@ -138,6 +141,7 @@ var (
 
 func init() {
 	runCmd.Flags().BoolVarP(&luksFlag, "luks", "l", false, "Use cryptsetup to open a LUKS volume (password will be prompted).")
+	runCmd.Flags().StringVar(&luksContainerFlag, "luks-container", "", `Specifies a device path (without "dev/" prefix) to preopen as a LUKS container (password will be prompted). Useful for accessing LVM partitions behind LUKS.`)
 	runCmd.Flags().BoolVar(&allowLUKSLowMemoryFlag, "allow-luks-low-memory", false, "Allow VM memory allocation lower than 2048 MiB when LUKS is enabled.")
 	runCmd.Flags().BoolVar(&debugShellFlag, "debug-shell", false, "Start a VM shell when the network file share is active.")
 
