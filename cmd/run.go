@@ -147,12 +147,10 @@ func init() {
 
 	var defaultShareType string
 	switch {
-	case osspecifics.IsWindows():
-		defaultShareType = "smb"
 	case osspecifics.IsMacOS():
 		defaultShareType = "afp"
 	default:
-		defaultShareType = "ftp"
+		defaultShareType = "smb"
 	}
 
 	runCmd.Flags().StringVar(&shareBackendFlag, "share-backend", defaultShareType, `Specifies the file share backend to use. The default value is OS-specific. (available "smb", "afp", "ftp")`)
