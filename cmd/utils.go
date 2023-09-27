@@ -284,6 +284,10 @@ func getDevicePassthroughConfig(val string) (*vm.PassthroughConfig, error) {
 		//
 		// This mode emulates the faulty block size definition for compatibility with older Linsk versions.
 
+		slog.Warn("RISK WARNING: Skipping device block size detection and using the default of 512 bytes. Please use this ONLY to recover data from disks with filesystem that were locked to emulated 512-byte block size.")
+
+		// TODO: Remove the need to specify the FS type manually.
+
 		devPath := filepath.Clean(valSplit[1])
 
 		err := osspecifics.CheckValidDevicePath(devPath)
