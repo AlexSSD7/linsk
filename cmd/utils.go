@@ -273,6 +273,28 @@ func getDevicePassthroughConfig(val string) (*vm.PassthroughConfig, error) {
 			Path:      devPath,
 			BlockSize: blockSize,
 		}}}, nil
+	case "dev_faulty_bs":
+		// Originally, Linsk assumed that the block size management was done by QEMU.
+		// But it appears that it wasn't, and QEMU used the default sector size of 512.
+		// bytes everywhere, no matter the physical/logical block size of the actual device.
+		//
+		// Sometimes, this can make the VM optimize the disk for the emulated 512 block size,
+		// thus making the disk look "corrupted" to the host OS that sees the right block
+		// size of more than 512 bytes.
+		//
+		// This mode emulates the faulty block size definition for compatibility with older Linsk versions.
+
+		devPath := filepath.Clean(valSplit[1])
+
+		err := osspecifics.CheckValidDevicePath(devPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "check whether device path is valid '%v'", devPath)
+		}
+
+		return &vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
+			Path:      devPath,
+			BlockSize: 512,
+		}}}, nil
 	default:
 		return nil, fmt.Errorf("unknown device passthrough type '%v'", val)
 	}
