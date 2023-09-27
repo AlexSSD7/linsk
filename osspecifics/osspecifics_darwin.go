@@ -16,6 +16,13 @@
 
 // go:build darwin
 
+package osspecifics
+
+import (
+	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
+)
+
 func getDeviceLogicalBlockSizeInner(fd uintptr) (int64, error) {
 	bs, err := unix.IoctlGetInt(int(fd.Fd()), 0x40046418) // Syscall code for DKIOGETBLOCKSIZE
 	if err != nil {
