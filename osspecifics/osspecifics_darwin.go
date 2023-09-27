@@ -24,7 +24,7 @@ import (
 )
 
 func getDeviceLogicalBlockSizeInner(fd uintptr) (int64, error) {
-	bs, err := unix.IoctlGetInt(int(fd.Fd()), 0x40046418) // Syscall code for DKIOGETBLOCKSIZE
+	bs, err := unix.IoctlGetInt(int(fd), 0x40046418) // Syscall code for DKIOGETBLOCKSIZE
 	if err != nil {
 		return 0, errors.Wrap(err, "ioctl get logical block size")
 	}
