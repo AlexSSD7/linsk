@@ -101,17 +101,16 @@ You should ignore `vda` drive as this is the system drive you have the Alpine Li
 
 ## Step 3. Run Linsk
 
-Let's assume that we decided to run Linsk with the `vdb2` `ext4` volume we found in the previous step. To do so, you may execute the following command:
+Let's assume that we decided to run Linsk with the `vdb2` volume we found in the previous step. To do so, you may execute the following command:
 
 ```powershell
 # This should be run in a terminal open with administrator privileges.
-linsk run dev:\\.\PhysicalDriveX vdb2 ext4
+linsk run dev:\\.\PhysicalDriveX vdb2
 ```
 
 Explanation of the command above:
 - `dev:\\.\PhysicalDriveX` - Tell Linsk to pass through the drive path you obtained from step 1.
 - `vdb2` - Tell Linsk to mount `/dev/vdb2` inside the filesystem. This was gathered from step 2.
-- `ext4` - Tell Linsk to use the Ext4 file system. As with the `vdb2`, this was acquired from step 2. **NOTE:** Specifying the file system is **REQUIRED**—you need to explicitly tell Linsk what filesystem you want to use.
 
 Upon running, you will see logs similar to this in your terminal:
 ```
@@ -120,7 +119,7 @@ time=2023-09-03T10:53:57.385+01:00 level=WARN msg="Using raw block device passth
 time=2023-09-03T10:53:57.387+01:00 level=INFO msg="Booting the VM" caller=vm
 time=2023-09-03T10:54:07.397+01:00 level=INFO msg="The VM is up, setting it up" caller=vm
 time=2023-09-03T10:54:11.662+01:00 level=INFO msg="The VM is ready" caller=vm
-time=2023-09-03T10:54:11.906+01:00 level=INFO msg="Mounting the device" dev=vdb2 fs=ext4 luks=false
+time=2023-09-03T10:54:11.906+01:00 level=INFO msg="Mounting the device" dev=vdb2 fs=<auto> luks=false
 time=2023-09-03T10:54:12.363+01:00 level=INFO msg="Started the network share successfully" backend=smb
 ===========================
 [Network File Share Config]
@@ -135,7 +134,7 @@ Password: <random password>
 
 At this point, you can open the file explorer -> Right-click "This PC" -> Show more options (if you're on Windows 11) -> Map network drive. Afterward, you should specify the share URL (the one that starts with `\\`), the static `linsk` username, and a randomly generated password.
 
-**That's it!** After that, you should see the network share mounted successfully. That means that you can now access the files on the `vdb2` Ext4 volume right from your Mac.
+**That's it!** After that, you should see the network share mounted successfully. That means that you can now access the files on the `vdb2` volume right from your Mac.
 
 The network share will remain open until you close Linsk, which you can do at any time by hitting Ctrl+C.
 
@@ -145,10 +144,10 @@ The example provided above is just a mere preview of the endless power Linsk's n
 
 ## Use LVM
 
-Linsk supports LVM2. You can mount LVM2 drives by specifying `mapper/<device name>` as the VM device name. Let's assume that you want to mount `vghdd-media` with XFS filesystem you found in the `linsk ls` output above. To do so, you may run:
+Linsk supports LVM2. You can mount LVM2 drives by specifying `mapper/<device name>` as the VM device name. Let's assume that you want to mount `vghdd-media` you found in the `linsk ls` output above. To do so, you may run:
 ```powershell
 # This should be run in a terminal open with administrator privileges.
-linsk run dev:\\.\PhysicalDriveX mapper/vghdd-media xfs
+linsk run dev:\\.\PhysicalDriveX mapper/vghdd-media
 ```
 
 ## Use LUKS with `cryptsetup`
@@ -156,7 +155,7 @@ linsk run dev:\\.\PhysicalDriveX mapper/vghdd-media xfs
 As well as with LVM2, LUKS via `cryptsetup` is natively supported by Linsk. To mount LUKS volumes, you may specify the `-l` flag in `linsk run` command. Let's assume that we want to access LUKS-encrypted volume `vghdd-archive` we found in the `linsk ls` example provided in step 2. To mount it, you may execute:
 ```powershell
 # This should be run in a terminal open with administrator privileges.
-linsk run -l dev:\\.\PhysicalDriveX mapper/vghdd-archive ext4
+linsk run -l dev:\\.\PhysicalDriveX mapper/vghdd-archive
 ```
 
 `-l` flag tells Linsk that it is a LUKS volume, and Linsk will prompt you for the password. Combined, your terminal will look like this:
@@ -167,7 +166,7 @@ time=2023-09-03T11:44:55.962+01:00 level=WARN msg="Using raw block device passth
 time=2023-09-03T11:44:55.964+01:00 level=INFO msg="Booting the VM" caller=vm
 time=2023-09-03T11:45:05.975+01:00 level=INFO msg="The VM is up, setting it up" caller=vm
 time=2023-09-03T11:45:08.472+01:00 level=INFO msg="The VM is ready" caller=vm
-time=2023-09-03T11:45:08.709+01:00 level=INFO msg="Mounting the device" dev=mapper/vghdd-archive fs=ext4 luks=true
+time=2023-09-03T11:45:08.709+01:00 level=INFO msg="Mounting the device" dev=mapper/vghdd-archive fs=<auto> luks=true
 time=2023-09-03T11:45:08.740+01:00 level=INFO msg="Attempting to open a LUKS device" caller=file-manager vm-path=/dev/mapper/vghdd-archive
 Enter Password: <you will get prompted for the password here>
 time=2023-09-03T11:46:08.444+01:00 level=INFO msg="LUKS device opened successfully" caller=file-manager vm-path=/dev/mapper/vghdd-archive
