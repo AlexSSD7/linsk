@@ -62,7 +62,7 @@ time=2023-09-03T10:37:35.728+01:00 level=WARN msg="Using raw block device passth
 time=2023-09-03T10:37:35.730+01:00 level=INFO msg="Booting the VM" caller=vm
 time=2023-09-03T10:37:45.742+01:00 level=INFO msg="The VM is up, setting it up" caller=vm
 time=2023-09-03T10:37:48.578+01:00 level=INFO msg="The VM is ready" caller=vm
-NAME               SIZE FSTYPE      LABEL
+NAME               SIZE FSTYPE
 vda                  1G
 ├─vda1             300M ext4
 ├─vda2             256M swap
@@ -81,7 +81,7 @@ time=2023-09-03T10:37:49.117+01:00 level=INFO msg="Shutting the VM down safely" 
 
 Filtering the logs out, this is the point of your interest:
 ```
-NAME               SIZE FSTYPE      LABEL
+NAME               SIZE FSTYPE
 vda                  1G
 ├─vda1             300M ext4
 ├─vda2             256M swap
@@ -97,7 +97,9 @@ vdb               10.5T
 
 This is an output of `lsblk` command Linsk ran for you under the VM's hood.
 
-You should ignore `vda` drive as this is the system drive you have the Alpine Linux installation on. Assuming that you used raw device passthrough, commonly, `vdb` is going to be the drive you passed through. But please note that this may not always be the case, and you should inspect the output above and confirm that the partitions shown match your drive.
+You should ignore the `vda` drive as this is the system drive you have the Alpine Linux installation on. Assuming that you used raw device passthrough, commonly, `vdb` is going to be the drive you passed through. But please note that this may not always be the case, and you should inspect the output above and confirm that the partitions shown match your drive.
+
+**Having an LVM volume group behind an encrypted LUKS container?** Extra configuration is required. Please see the [Use an LVM volume group contained inside a LUKS volume](#use-an-lvm-volume-group-contained-inside-a-luks-volume) section.
 
 ## Step 3. Run Linsk
 
@@ -111,6 +113,8 @@ linsk run dev:\\.\PhysicalDriveX vdb2
 Explanation of the command above:
 - `dev:\\.\PhysicalDriveX` - Tell Linsk to pass through the drive path you obtained from step 1.
 - `vdb2` - Tell Linsk to mount `/dev/vdb2` inside the filesystem. This was gathered from step 2.
+
+**Pro Tip**: If the entire drive is just a single filesystem (without a partition table), you can omit the second parameter that specifies the VM device to mount. It will be automatically set to `vdb` as the default.
 
 Upon running, you will see logs similar to this in your terminal:
 ```
@@ -183,6 +187,71 @@ Password: <random password>
 ```
 
 This example showed how you can use LUKS with LVM2 volumes, but that doesn't mean that you can't use volumes without LVM. You can specify plain device paths like `vdb3` without any issue.
+
+## Use an LVM volume group contained inside a LUKS volume
+
+This is a common scenario that is widely used to enable full-disk encryption on various Linux distributions. It implies having a master LUKS volume that, once decrypted, exposes an LVM volume group (vg).
+
+Linsk supports this by exposing `--luks-container` flag. You can use it with both `linsk ls` and `linsk run`.
+
+## `linsk ls` with LUKS Container
+
+Let's assume that you have a similar file system structure:
+```
+NAME                  FSTYPE
+vdb
+├─vdb1                vfat
+├─vdb2                ext4
+└─vdb3                crypto_LUKS
+  └─cryptroot         LVM2_member
+    ├─vgubuntu-lvswap swap
+    └─vgubuntu-lvroot ext4
+```
+
+If you run `linsk ls` without `--luks-container` flag like this:
+```powershell
+linsk ls dev:\\.\PhysicalDriveX
+```
+
+You are going to get this:
+```
+NAME                  FSTYPE
+vdb
+├─vdb1                vfat
+├─vdb2                ext4
+└─vdb3                crypto_LUKS
+```
+
+As you see, `vdb3` is locked, and the partitions inside thus remain invisible to the `linsk ls` command.
+
+To tell Linsk to decrypt the `vdb3` container before going with anything, you may specify the `--luks-container` flag. Here is an example:
+```powershell
+linsk ls dev:\\.\PhysicalDriveX --luks-container vdb3
+```
+
+You will then get prompted a password, and once the LUKS container is open, you will see all of your partitions under the `vdb3` LUKS container. Your `lsblk` output will look like this:
+```
+NAME                  FSTYPE
+vdb
+├─vdb1                vfat
+├─vdb2                ext4
+└─vdb3                crypto_LUKS
+  └─cryptcontainer    LVM2_member
+    ├─vgubuntu-lvswap swap
+    └─vgubuntu-lvroot ext4
+```
+
+## `linsk run` with LUKS Container
+
+Let's assume that you want to mount `vgubuntu-lvroot`.
+
+You need to use the same `--luks-container vdb3` flag we used with `linsk ls`. Combined, your command should look like the following:
+```powershell
+# This should be run in a terminal open with administrator privileges.
+linsk run dev:\\.\PhysicalDriveX --luks-container vdb3 mapper/vgubuntu-lvroot
+```
+
+**Pro Tip**: If the entire passed-through volume is a LUKS container (i.e., you are attempting to run with `--luks-container vdb`), you may use the `-c` flag as a shortcut (or long `--luks-container-entire-drive`). It is equivalent to `--luks-container vdb`.
 
 # FAQ
 
