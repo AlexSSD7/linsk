@@ -22,7 +22,8 @@ type USBDevicePassthroughConfig struct {
 }
 
 type BlockDevicePassthroughConfig struct {
-	Path string
+	Path      string
+	BlockSize uint64
 }
 
 type PassthroughConfig struct {

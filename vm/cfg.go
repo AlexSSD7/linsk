@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -325,18 +326,44 @@ func configureVMCmdBlockDevicePassthrough(logger *slog.Logger, cfg Config) ([]qe
 			}
 		}
 
+		if dev.BlockSize == 0 {
+			return nil, fmt.Errorf("invalid zero block size specified for device '%v'", dev.Path)
+		}
+
+		if dev.BlockSize > 65536 {
+			return nil, fmt.Errorf("block size specified for device '%v' is too large (max is 65536): '%v'", dev.Path, dev.BlockSize)
+		}
+
+		if dev.BlockSize/512*512 != dev.BlockSize {
+			return nil, fmt.Errorf("unaligned block size specified for device '%v' (must be in increments of 512): '%v'", dev.Path, dev.BlockSize)
+		}
+
+		strBlockSize := strconv.FormatUint(dev.BlockSize, 10)
+
 		devPath := cleanQEMUPath(dev.Path)
+		driveID := getUniqueQEMUDriveID()
+
+		driveDevArg, err := qemucli.NewKeyValueArg("device", []qemucli.KeyValueArgItem{
+			{Key: "driver", Value: "virtio-blk-pci"},
+			{Key: "drive", Value: driveID},
+			{Key: "logical_block_size", Value: strBlockSize},
+			{Key: "physical_block_size", Value: strBlockSize},
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "create drive device key-value arg (path '%v')", devPath)
+		}
 
 		driveArg, err := qemucli.NewKeyValueArg("drive", []qemucli.KeyValueArgItem{
 			{Key: "file", Value: devPath},
 			{Key: "format", Value: "raw"},
-			{Key: "if", Value: "virtio"},
+			{Key: "if", Value: "none"},
+			{Key: "id", Value: driveID},
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "create drive key-value arg (path '%v')", devPath)
 		}
 
-		args = append(args, driveArg)
+		args = append(args, driveDevArg, driveArg)
 	}
 
 	return args, nil

@@ -264,8 +264,14 @@ func getDevicePassthroughConfig(val string) (*vm.PassthroughConfig, error) {
 			return nil, errors.Wrapf(err, "check whether device path is valid '%v'", devPath)
 		}
 
+		blockSize, err := osspecifics.GetDeviceLogicalBlockSize(devPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "get logical block size for device '%v'", devPath)
+		}
+
 		return &vm.PassthroughConfig{Block: []vm.BlockDevicePassthroughConfig{{
-			Path: devPath,
+			Path:      devPath,
+			BlockSize: blockSize,
 		}}}, nil
 	default:
 		return nil, fmt.Errorf("unknown device passthrough type '%v'", val)
