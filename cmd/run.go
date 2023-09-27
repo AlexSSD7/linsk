@@ -33,10 +33,33 @@ import (
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start a VM and expose an FTP file share.",
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.RangeArgs(1, 3),
 	Run: func(cmd *cobra.Command, args []string) {
-		vmMountDevName := args[1]
-		fsType := args[2]
+		var luksContainerDevice string
+
+		vmMountDevName := "vdb"
+
+		if luksContainerFlag != "" {
+			if luksContainerEntireDriveFlag {
+				slog.Error("--luks-container and --luks-container-entire-drive (-c) cannot be both specified at once")
+				os.Exit(1)
+			}
+
+			luksContainerDevice = luksContainerFlag
+		} else if luksContainerEntireDriveFlag {
+			luksContainerDevice = vmMountDevName
+		}
+
+		if len(args) > 1 {
+			vmMountDevName = args[1]
+		} else if luksContainerDevice != "" {
+			slog.Error("Cannot use the default (entire) device with a LUKS container. Please specify the in-VM device name to mount as a second positional argument.")
+		}
+
+		var fsTypeOverride string
+		if len(args) > 2 {
+			fsTypeOverride = args[2]
+		}
 
 		newBackendFunc := share.GetBackend(shareBackendFlag)
 		if newBackendFunc == nil {
@@ -61,7 +84,7 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if (luksFlag || luksContainerFlag != "") && !allowLUKSLowMemoryFlag {
+		if (luksFlag || luksContainerDevice != "") && !allowLUKSLowMemoryFlag {
 			if vmMemAllocFlag < defaultMemAllocLUKS {
 				if vmMemAllocFlag != defaultMemAlloc {
 					slog.Warn("Enforcing minimum LUKS memory allocation. Please add --allow-luks-low-memory to disable this.", "min", vmMemAllocFlag, "specified", vmMemAllocFlag)
@@ -72,13 +95,18 @@ var runCmd = &cobra.Command{
 		}
 
 		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, tapCtx *share.NetTapRuntimeContext) int {
-			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsType, "luks", luksFlag)
+			fsToLog := "<auto>"
+			if fsTypeOverride != "" {
+				fsToLog = fsTypeOverride
+			}
+
+			slog.Info("Mounting the device", "dev", vmMountDevName, "fs", fsToLog, "luks", luksFlag)
 
 			err := fm.Mount(vmMountDevName, vm.MountOptions{
-				LUKSContainerPreopen: luksContainerFlag,
+				LUKSContainerPreopen: luksContainerDevice,
 
-				FSType: fsType,
-				LUKS:   luksFlag,
+				FSTypeOverride: fsTypeOverride,
+				LUKS:           luksFlag,
 			})
 			if err != nil {
 				slog.Error("Failed to mount the disk inside the VM", "error", err.Error())
@@ -129,19 +157,21 @@ var runCmd = &cobra.Command{
 }
 
 var (
-	luksFlag               bool
-	luksContainerFlag      string
-	allowLUKSLowMemoryFlag bool
-	shareListenIPFlag      string
-	ftpExtIPFlag           string
-	shareBackendFlag       string
-	smbUseExternAddrFlag   bool
-	debugShellFlag         bool
+	luksFlag                     bool
+	luksContainerFlag            string
+	luksContainerEntireDriveFlag bool
+	allowLUKSLowMemoryFlag       bool
+	shareListenIPFlag            string
+	ftpExtIPFlag                 string
+	shareBackendFlag             string
+	smbUseExternAddrFlag         bool
+	debugShellFlag               bool
 )
 
 func init() {
 	runCmd.Flags().BoolVarP(&luksFlag, "luks", "l", false, "Use cryptsetup to open a LUKS volume (password will be prompted).")
 	runCmd.Flags().StringVar(&luksContainerFlag, "luks-container", "", `Specifies a device path (without "dev/" prefix) to preopen as a LUKS container (password will be prompted). Useful for accessing LVM partitions behind LUKS.`)
+	runCmd.Flags().BoolVarP(&luksContainerEntireDriveFlag, "luks-container-entire-drive", "c", false, `Similar to --luks-container, but this assumes that the entire passed-through volume is a LUKS container (password will be prompted).`)
 	runCmd.Flags().BoolVar(&allowLUKSLowMemoryFlag, "allow-luks-low-memory", false, "Allow VM memory allocation lower than 2048 MiB when LUKS is enabled.")
 	runCmd.Flags().BoolVar(&debugShellFlag, "debug-shell", false, "Start a VM shell when the network file share is active.")
 

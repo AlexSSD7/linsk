@@ -85,8 +85,8 @@ func (fm *FileManager) Lsblk() ([]byte, error) {
 type MountOptions struct {
 	LUKSContainerPreopen string
 
-	FSType string
-	LUKS   bool
+	FSTypeOverride string
+	LUKS           bool
 }
 
 func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string, luksDMName string) error {
@@ -186,8 +186,14 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	// Windows, but we're targeting a Linux VM.)
 	fullDevPath := "/dev/" + devName
 
-	if mo.FSType == "" {
-		return fmt.Errorf("fs type is empty")
+	var fsOverride string
+
+	if mo.FSTypeOverride != "" {
+		if !utils.ValidateFsType(mo.FSTypeOverride) {
+			return fmt.Errorf("bad fs type override (contains illegal characters)")
+		}
+
+		fsOverride = mo.FSTypeOverride
 	}
 
 	sc, err := fm.vm.DialSSH()
@@ -228,7 +234,13 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 		fullDevPath = "/dev/mapper/" + luksDMName
 	}
 
-	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, "mount -t "+shellescape.Quote(mo.FSType)+" "+shellescape.Quote(fullDevPath)+" /mnt")
+	cmd := "mount "
+	if fsOverride != "" {
+		cmd += "-t " + shellescape.Quote(fsOverride) + " "
+	}
+	cmd += shellescape.Quote(fullDevPath) + " /mnt"
+
+	_, err = sshutil.RunSSHCmd(fm.vm.ctx, sc, cmd)
 	if err != nil {
 		return errors.Wrap(err, "run mount cmd")
 	}
