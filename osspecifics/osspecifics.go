@@ -91,7 +91,7 @@ func CheckRunAsRoot() (bool, error) {
 }
 
 func GetDeviceLogicalBlockSize(devPath string) (uint64, error) {
-	fd, err := os.Open(devPath)
+	fd, err := os.Open(filepath.Clean(devPath))
 	if err != nil {
 		return 0, errors.Wrap(err, "open device")
 	}

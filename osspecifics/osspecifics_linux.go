@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// go:build linux
+//go:build linux
 
 package osspecifics
 
@@ -27,10 +27,10 @@ import (
 
 func getDeviceLogicalBlockSizeInner(fd uintptr) (int64, error) {
 	var bs int64
-	_, _, serr := unix.Syscall(unix.SYS_IOCTL, fd, unix.BLKSSZGET, uintptr(unsafe.Pointer(&bs)))
+	_, _, serr := unix.Syscall(unix.SYS_IOCTL, fd, unix.BLKSSZGET, uintptr(unsafe.Pointer(&bs))) // #nosec G103 It's safe.
 	if serr != 0 {
 		return 0, errors.Wrap(serr, "syscall get logical block size")
 	}
 
-	return int64(bs), nil
+	return bs, nil
 }
