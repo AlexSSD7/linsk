@@ -89,3 +89,23 @@ func CheckRunAsRoot() (bool, error) {
 
 	return currentUser.Username == "root", nil
 }
+
+func GetDeviceLogicalBlockSize(devPath string) (uint64, error) {
+	fd, err := os.Open(devPath)
+	if err != nil {
+		return 0, errors.Wrap(err, "open device")
+	}
+
+	defer func() { _ = fd.Close() }()
+
+	bs, err := getDeviceLogicalBlockSizeInner(fd.Fd())
+	if err != nil {
+		return 0, errors.Wrap(err, "get block size inner")
+	}
+
+	if bs <= 0 {
+		return 0, fmt.Errorf("retrieved block size is zero (or negative): '%v'", bs)
+	}
+
+	return uint64(bs), nil
+}

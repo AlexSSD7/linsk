@@ -19,6 +19,7 @@
 package osspecifics
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -98,4 +99,32 @@ func CheckRunAsRoot() (bool, error) {
 	}
 
 	return member, nil
+}
+
+func GetDeviceLogicalBlockSize(devPath string) (uint64, error) {
+	diskPath, err := windows.UTF16PtrFromString(devPath)
+	if err != nil {
+		return 0, errors.Wrap(err, "create utf-16 ptr from dev path string")
+	}
+
+	handle, err := windows.CreateFile(diskPath, syscall.GENERIC_READ, syscall.FILE_SHARE_READ, nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return 0, errors.Wrap(err, "create windows file")
+	}
+
+	defer func() { _ = windows.CloseHandle(handle) }()
+
+	buf := make([]uint8, 128)
+	var read uint32
+	err = windows.DeviceIoControl(handle, 0x700a0, nil, 0, &buf[0], uint32(len(buf)), &read, nil) // IOCTL_DISK_GET_DRIVE_GEOMETRY_EX call.
+	if err != nil {
+		return 0, errors.Wrap(err, "invoke windows device i/o control")
+	}
+
+	// Skipping cylinders, media type, tracks per cylinder, and sectors per track fields in the disk geometry return struct.
+	//
+	// We could theoretically use `unsafe` type casting, but it's in the name - it's unsafe.
+	bs := binary.NativeEndian.Uint32(buf[20:24])
+
+	return uint64(bs), nil
 }
