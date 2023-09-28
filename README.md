@@ -42,6 +42,14 @@ Linsk relies on network file shares to expose files to the host machine. Below a
 - **Windows** - See [USAGE_WINDOWS.md](USAGE_WINDOWS.md).
 - **macOS** - See [USAGE_MACOS.md](USAGE_MACOS.md).
 
+# ⚠️ Serious bug disclosures (Obsolete versions)
+
+Linsk versions below **v1.1.0** are considered obsolete **UNLESS**:
+* The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size.
+* The experimental USB passthrough was used.
+
+More information: [serious-bug-disclosures/README.md](serious-bug-disclosures/README.md)
+
 # 👨‍💻 Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md).
