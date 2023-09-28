@@ -1,9 +1,6 @@
 rm -rf build
 mkdir build
 
-trimpath=$PWD
-echo "Trimming path $trimpath"
-
 version=$1
 
 if [ -z "$version" ]; then
@@ -34,4 +31,4 @@ cd build
 hashes_file="linsk_sha256_$version.txt"
 
 sha256sum * > $hashes_file
-gpg --output ${hashes_file}.sig --detach-sign --armor $hashes_file
+gpg --output ${hashes_file}.sig --detach-sign --local-user F7231DFD3333A27F71D171383B627C597D3727BD --armor $hashes_file
