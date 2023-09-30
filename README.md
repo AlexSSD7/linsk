@@ -45,7 +45,7 @@ Linsk relies on network file shares to expose files to the host machine. Below a
 # ⚠️ Serious bug disclosures (Obsolete versions)
 
 Linsk versions below **v0.2.0** are considered obsolete **UNLESS**:
-* The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size.
+* The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size; **or**
 * The experimental USB passthrough was used.
 
 More information: [serious-bug-disclosures/README.md](serious-bug-disclosures/README.md)

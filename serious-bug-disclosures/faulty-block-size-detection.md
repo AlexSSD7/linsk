@@ -4,7 +4,7 @@
 
 * **Affected versions**: below v0.2.0.
 * **Affected *UNLESS***:
-  * The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size.
+  * The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size; **or**
   * The experimental USB passthrough was used.
 * **Possible outcomes**: A disk may be locked to Linsk after writing a considerable amount of data through Linsk. This means that the disk will not be accessible by any Linux machine, unless a 512-byte block size is emulated. Reformat is required to recover from this condition.
 * **Severity**: Although there is **no data loss**, the severity can be considered as **High**.

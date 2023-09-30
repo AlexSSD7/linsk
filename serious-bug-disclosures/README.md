@@ -3,7 +3,7 @@
 ## Obsolete versions (Summary)
 
 Linsk versions below **v0.2.0** are considered obsolete **UNLESS**:
-* The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size.
+* The use of Linsk was limited exclusively to devices with a 512-byte logical block (sector) size; **or**
 * The experimental USB passthrough was used.
 
 ## Index
