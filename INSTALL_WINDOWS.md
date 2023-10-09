@@ -35,7 +35,7 @@ Assuming that you have an existing Go installation, you should be able to access
 
 You can run the following command to build and install Linsk:
 ```sh
-go install github.com/AlexSSD7/linsk
+go install github.com/AlexSSD7/linsk@latest
 ```
 
 After that, you should be able to run `linsk`, or `%USERPROFILE%\go\bin\linsk.exe` if you have not added `%USERPROFILE%\go\bin` to PATH.
