@@ -63,6 +63,7 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 		qemucli.MustNewStringArg("serial", "stdio"),
 		qemucli.MustNewUintArg("m", cfg.MemoryAlloc),
 		qemucli.MustNewUintArg("smp", runtime.NumCPU()),
+		qemucli.MustNewStringArg("cpu", "host"),
 	}
 
 	var accel []qemucli.KeyValueArgItem
@@ -96,7 +97,6 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 				{Key: "type", Value: "virt"},
 				{Key: "highmem", Value: "off"},
 			}),
-			qemucli.MustNewStringArg("cpu", "host"),
 		)
 
 		baseCmd += "-aarch64"
