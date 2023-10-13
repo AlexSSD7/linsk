@@ -17,7 +17,6 @@
 package share
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -64,7 +63,7 @@ func NewFTPBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 		}, nil
 }
 
-func (b *FTPBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareContext) (string, error) {
+func (b *FTPBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) {
 	if vc.NetTapCtx != nil {
 		return "", fmt.Errorf("net taps are unsupported in ftp")
 	}

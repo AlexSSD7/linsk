@@ -17,7 +17,6 @@
 package share
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -48,7 +47,7 @@ func NewAFPBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 		}, nil
 }
 
-func (b *AFPBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareContext) (string, error) {
+func (b *AFPBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) {
 	err := vc.FileManager.StartAFP(sharePWD)
 	if err != nil {
 		return "", errors.Wrap(err, "start afp server")

@@ -101,7 +101,7 @@ var runCmd = &cobra.Command{
 
 			lg := slog.With("backend", shareBackendFlag)
 
-			shareURI, err := backend.Apply(ctx, sharePWD, &share.VMShareContext{
+			shareURI, err := backend.Apply(sharePWD, &share.VMShareContext{
 				Instance:    i,
 				FileManager: fm,
 				NetTapCtx:   tapCtx,
