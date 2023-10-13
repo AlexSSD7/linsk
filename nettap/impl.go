@@ -30,7 +30,7 @@ type TapManager struct {
 	logger *slog.Logger
 }
 
-func NewTapManager(logger *slog.Logger) (*TapManager, error) {
+func NewTapManager(_ *slog.Logger) (*TapManager, error) {
 	return nil, ErrTapManagerUnimplemented
 }
 
@@ -38,18 +38,18 @@ func NewUniqueTapName() (string, error) {
 	return "", ErrTapManagerUnimplemented
 }
 
-func (tm *TapManager) CreateNewTap(tapName string) error {
+func (tm *TapManager) CreateNewTap(_ string) error {
 	return ErrTapManagerUnimplemented
 }
 
-func ValidateTapName(s string) error {
+func ValidateTapName(_ string) error {
 	return ErrTapManagerUnimplemented
 }
 
-func (tm *TapManager) DeleteTap(name string) error {
+func (tm *TapManager) DeleteTap(_ string) error {
 	return ErrTapManagerUnimplemented
 }
 
-func (tm *TapManager) ConfigureNet(tapName string, hostCIDR string) error {
+func (tm *TapManager) ConfigureNet(_ string, _ string) error {
 	return ErrTapManagerUnimplemented
 }

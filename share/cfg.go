@@ -51,16 +51,16 @@ func (rc RawUserConfiguration) Process(backend string, warnLogger *slog.Logger) 
 
 	if backend == "ftp" {
 		if !listenIP.Equal(defaultListenIP) && ftpExtIP.Equal(defaultListenIP) {
-			slog.Warn("No external FTP IP address via --ftp-extip was configured. This is a requirement in almost all scenarios if you want to connect remotely.")
+			warnLogger.Warn("No external FTP IP address via --ftp-extip was configured. This is a requirement in almost all scenarios if you want to connect remotely.")
 		}
 	} else {
 		if !ftpExtIP.Equal(defaultListenIP) {
-			slog.Warn("FTP external IP address specification is ineffective with non-FTP backends", "selected", backend)
+			warnLogger.Warn("FTP external IP address specification is ineffective with non-FTP backends", "selected", backend)
 		}
 	}
 
 	if rc.SMBExtMode && backend != "smb" && !IsSMBExtModeDefault() {
-		slog.Warn("SMB external mode specification is ineffective with non-SMB backends")
+		warnLogger.Warn("SMB external mode specification is ineffective with non-SMB backends")
 	}
 
 	return &UserConfiguration{

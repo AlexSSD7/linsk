@@ -17,7 +17,6 @@
 package share
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -61,7 +60,7 @@ func NewSMBBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 		}, nil
 }
 
-func (b *SMBBackend) Apply(ctx context.Context, sharePWD string, vc *VMShareContext) (string, error) {
+func (b *SMBBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) {
 	if b.sharePort != nil && vc.NetTapCtx != nil {
 		return "", fmt.Errorf("conflict: configured to use a forwarded port but a net tap configuration was detected")
 	}
