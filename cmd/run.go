@@ -43,6 +43,7 @@ var runCmd = &cobra.Command{
 			vmMountDevName = args[1]
 		} else if vmRuntimeLUKSContainerDevice != "" {
 			slog.Error("Cannot use the default (entire) device with a LUKS container. Please specify the in-VM device name to mount as a second positional argument.")
+			os.Exit(1)
 		}
 
 		var fsTypeOverride string
