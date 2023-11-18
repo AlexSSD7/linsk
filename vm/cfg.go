@@ -63,7 +63,10 @@ func configureBaseVMCmd(logger *slog.Logger, cfg Config) (string, []qemucli.Arg,
 		qemucli.MustNewStringArg("serial", "stdio"),
 		qemucli.MustNewUintArg("m", cfg.MemoryAlloc),
 		qemucli.MustNewUintArg("smp", runtime.NumCPU()),
-		qemucli.MustNewStringArg("cpu", "host"),
+	}
+
+	if osspecifics.IsMacOS() {
+		args = append(args, qemucli.MustNewStringArg("cpu", "host"))
 	}
 
 	var accel []qemucli.KeyValueArgItem
