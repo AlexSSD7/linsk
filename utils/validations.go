@@ -37,13 +37,13 @@ func ClearUnprintableChars(s string, allowNewlines bool) string {
 	}, s)
 }
 
-var fsTypeRegex = regexp.MustCompile(`^[a-z0-9]+$`)
+var fsTypeRegex = regexp.MustCompile(`^(?i)[a-z0-9]+$`)
 
 func ValidateFsType(s string) bool {
 	return fsTypeRegex.MatchString(s)
 }
 
-var devNameRegexp = regexp.MustCompile(`^[0-9a-z_-]+$`)
+var devNameRegexp = regexp.MustCompile(`^(?i)[0-9a-z_-]+$`)
 
 func ValidateDevName(s string) bool {
 	// Allow mapped devices.
@@ -52,7 +52,7 @@ func ValidateDevName(s string) bool {
 	return devNameRegexp.MatchString(s)
 }
 
-var unixUsernameRegexp = regexp.MustCompile(`^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$`)
+var unixUsernameRegexp = regexp.MustCompile(`^(?i)[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$`)
 
 func ValidateUnixUsername(s string) bool {
 	return unixUsernameRegexp.MatchString(s)
