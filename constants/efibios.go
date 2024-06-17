@@ -18,13 +18,13 @@ package constants
 
 import "github.com/AlexSSD7/linsk/utils"
 
-const aarch64EFIImageBZ2URL = "https://github.com/qemu/qemu/raw/86305e864191123dcf87c3af639fddfc59352ac6/pc-bios/edk2-aarch64-code.fd.bz2"
+const aarch64EFIImageBZ2URL = "https://github.com/qemu/qemu/raw/e3404e01c7f74efdc3440ddfd339d67bf7a8410e/pc-bios/edk2-aarch64-code.fd.bz2"
 const aarch64EFIImageName = "edk2-aarch64-code.fd"
 
 var aarch64EFIImageHash []byte
 
 func init() {
-	aarch64EFIImageHash = utils.MustDecodeHex("f7f2c02853fda64cad31d4ab95ef636a7c50aac4829290e7b3a73b17d3483fc1")
+	aarch64EFIImageHash = utils.MustDecodeHex("c0c78f7443cce15bcc91a8b6966e759c8c5cf5c80ac0086d5d79b0455fc9ccb5")
 }
 
 func GetAarch64EFIImageName() string {
