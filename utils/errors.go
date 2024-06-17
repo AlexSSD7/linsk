@@ -32,11 +32,11 @@ func GetLogErrMsg(s string, logLabel string) string {
 	logToInclude = strings.TrimSuffix(logToInclude, "\\n")
 	logToInclude = ClearUnprintableChars(logToInclude, false)
 
-	origLogLen := len(logToInclude)
-	const maxLogLen = 256
-	if origLogLen > maxLogLen {
-		logToInclude = fmt.Sprintf("[%v chars trimmed]", origLogLen-maxLogLen) + logToInclude[len(logToInclude)-maxLogLen:]
-	}
+	// origLogLen := len(logToInclude)
+	// const maxLogLen = 256
+	// if origLogLen > maxLogLen {
+	// 	logToInclude = fmt.Sprintf("[%v chars trimmed]", origLogLen-maxLogLen) + logToInclude[len(logToInclude)-maxLogLen:]
+	// }
 
 	return fmt.Sprintf("(%v: '%v')", logLabel, logToInclude)
 }
