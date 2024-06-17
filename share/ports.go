@@ -30,8 +30,7 @@ func getNetworkSharePort(subsequent uint16) (uint16, error) {
 }
 
 func getClosestAvailPortWithSubsequent(port uint16, subsequent uint16) (uint16, error) {
-	// We use 10 as port range.
-	for i := port; i < 65535; i += subsequent {
+	for i := port; i < 65535; i += 1 + subsequent {
 		ok, err := checkPortAvailable(i, subsequent)
 		if err != nil {
 			return 0, errors.Wrapf(err, "check port available (%v)", i)
@@ -52,7 +51,7 @@ func checkPortAvailable(port uint16, subsequent uint16) (bool, error) {
 	}
 
 	if subsequent == 0 {
-		ln, err := net.Listen("tcp", ":"+fmt.Sprint(port))
+		ln, err := net.Listen("tcp", "127.0.0.1:"+fmt.Sprint(port))
 		if err != nil {
 			opErr := new(net.OpError)
 			if errors.As(err, &opErr) {
