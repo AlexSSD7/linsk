@@ -43,7 +43,7 @@ func ValidateFsType(s string) bool {
 	return fsTypeRegex.MatchString(s)
 }
 
-var devNameRegexp = regexp.MustCompile(`^[0-9a-z_-]+$`)
+var devNameRegexp = regexp.MustCompile(`^[0-9A-Za-z_-]+$`)
 
 func ValidateDevName(s string) bool {
 	// Allow mapped devices.
