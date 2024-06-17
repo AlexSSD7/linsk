@@ -120,6 +120,8 @@ func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string, luksDMName s
 
 		fmt.Print("\n")
 
+		fmt.Printf("PWD: '%v'\n", string(pwd))
+
 		// We start the timeout countdown now only to avoid timing out
 		// while the user is entering the password, or shortly after that.
 		startTimeout(func() {
