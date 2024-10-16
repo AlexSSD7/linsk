@@ -53,5 +53,5 @@ func (b *AFPBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) 
 		return "", errors.Wrap(err, "start afp server")
 	}
 
-	return "afp://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(b.sharePort)) + "/linsk", nil
+	return "afp://linsk:" + sharePWD + "@" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(b.sharePort)) + "/linsk", nil
 }

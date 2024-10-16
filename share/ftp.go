@@ -73,5 +73,5 @@ func (b *FTPBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) 
 		return "", errors.Wrap(err, "start ftp server")
 	}
 
-	return "ftp://" + b.extIP.String() + ":" + fmt.Sprint(b.sharePort), nil
+	return "ftp://linsk:" + sharePWD + "@" + b.extIP.String() + ":" + fmt.Sprint(b.sharePort), nil
 }
