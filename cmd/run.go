@@ -170,5 +170,5 @@ func init() {
 
 	runCmd.Flags().StringVar(&ftpExtIPFlag, "ftp-extip", share.GetDefaultListenIPStr(), "Specifies the external IP the FTP server should advertise.")
 	runCmd.Flags().BoolVar(&smbUseExternAddrFlag, "smb-extern", share.IsSMBExtModeDefault(), "Specifies whether Linsk emulate external networking for the VM's SMB server. This is the default for Windows as there is no way to specify ports in Windows SMB client.")
-	runCmd.Flags().StringVar(&mountOptionsFlag, "mount-options", "", "Specifies the mount options to be passed to the -o flag of mount")
+	runCmd.Flags().StringVar(&mountOptionsFlag, "mount-options", "", "Specifies the mount options to be passed to the -o flag of the mount.")
 }
