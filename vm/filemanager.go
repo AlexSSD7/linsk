@@ -231,7 +231,7 @@ func (fm *FileManager) Mount(devName string, mc MountConfig) error {
 	var mountOptions string
 	if mc.MountOptions != "" {
 		if !utils.ValidateMountOptions(mc.MountOptions) {
-			return fmt.Errorf("invalid mount options (contain illegal characters)")
+			return fmt.Errorf("invalid mount options (contains illegal characters)")
 		}
 		mountOptions = mc.MountOptions
 	}
