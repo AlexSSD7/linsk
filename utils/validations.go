@@ -37,10 +37,16 @@ func ClearUnprintableChars(s string, allowNewlines bool) string {
 	}, s)
 }
 
-var fsTypeRegex = regexp.MustCompile(`^[a-z0-9]+$`)
+var fsTypeRegexp = regexp.MustCompile(`^[a-z0-9]+$`)
 
 func ValidateFsType(s string) bool {
-	return fsTypeRegex.MatchString(s)
+	return fsTypeRegexp.MatchString(s)
+}
+
+var mountOptionsRegexp = regexp.MustCompile(`^([a-zA-Z0-9_]+(=[a-zA-Z0-9]+)?)(,[a-zA-Z0-9_]+(=[a-zA-Z0-9]+)?)*$`)
+
+func ValidateMountOptions(s string) bool {
+	return mountOptionsRegexp.MatchString(s)
 }
 
 var devNameRegexp = regexp.MustCompile(`^[0-9A-Za-z_-]+$`)

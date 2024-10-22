@@ -82,11 +82,12 @@ func (fm *FileManager) Lsblk() ([]byte, error) {
 	return ret, nil
 }
 
-type MountOptions struct {
+type MountConfig struct {
 	LUKSContainerPreopen string
 
 	FSTypeOverride string
 	LUKS           bool
+	MountOptions   string
 }
 
 func (fm *FileManager) luksOpen(sc *ssh.Client, fullDevPath string, luksDMName string) error {
@@ -202,7 +203,7 @@ func (fm *FileManager) preopenLUKSContainerWithSSH(sc *ssh.Client, containerDevP
 	return nil
 }
 
-func (fm *FileManager) Mount(devName string, mo MountOptions) error {
+func (fm *FileManager) Mount(devName string, mc MountConfig) error {
 	if devName == "" {
 		return fmt.Errorf("device name is empty")
 	}
@@ -220,13 +221,19 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	fullDevPath := "/dev/" + devName
 
 	var fsOverride string
-
-	if mo.FSTypeOverride != "" {
-		if !utils.ValidateFsType(mo.FSTypeOverride) {
+	if mc.FSTypeOverride != "" {
+		if !utils.ValidateFsType(mc.FSTypeOverride) {
 			return fmt.Errorf("bad fs type override (contains illegal characters)")
 		}
+		fsOverride = mc.FSTypeOverride
+	}
 
-		fsOverride = mo.FSTypeOverride
+	var mountOptions string
+	if mc.MountOptions != "" {
+		if !utils.ValidateMountOptions(mc.MountOptions) {
+			return fmt.Errorf("invalid mount options (contains illegal characters)")
+		}
+		mountOptions = mc.MountOptions
 	}
 
 	sc, err := fm.vm.DialSSH()
@@ -236,14 +243,14 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 
 	defer func() { _ = sc.Close() }()
 
-	if mo.LUKSContainerPreopen != "" {
-		err := fm.preopenLUKSContainerWithSSH(sc, mo.LUKSContainerPreopen)
+	if mc.LUKSContainerPreopen != "" {
+		err := fm.preopenLUKSContainerWithSSH(sc, mc.LUKSContainerPreopen)
 		if err != nil {
 			return errors.Wrap(err, "preopen luks container")
 		}
 	}
 
-	if mo.LUKS {
+	if mc.LUKS {
 		luksDMName := "cryptmnt"
 
 		err = fm.luksOpen(sc, fullDevPath, luksDMName)
@@ -257,6 +264,9 @@ func (fm *FileManager) Mount(devName string, mo MountOptions) error {
 	cmd := "mount "
 	if fsOverride != "" {
 		cmd += "-t " + shellescape.Quote(fsOverride) + " "
+	}
+	if mountOptions != "" {
+		cmd += "-o " + shellescape.Quote(mountOptions) + " "
 	}
 	cmd += shellescape.Quote(fullDevPath) + " /mnt"
 
