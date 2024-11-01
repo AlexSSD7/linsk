@@ -22,7 +22,7 @@ import (
 	"github.com/AlexSSD7/linsk/utils"
 )
 
-const baseAlpineVersionMajor = "3.18"
+const baseAlpineVersionMajor = "3.20"
 const baseAlpineVersionMinor = "3"
 const baseAlpineVersionCombined = baseAlpineVersionMajor + "." + baseAlpineVersionMinor
 
@@ -34,10 +34,10 @@ var alpineBaseImageHash []byte
 
 func init() {
 	baseAlpineArch = "x86_64"
-	alpineBaseImageHash = utils.MustDecodeHex("925f6bc1039a0abcd0548d2c3054d54dce31cfa03c7eeba22d10d85dc5817c98")
+	alpineBaseImageHash = utils.MustDecodeHex("81df854fbd7327d293c726b1eeeb82061d3bc8f5a86a6f77eea720f6be372261")
 	if runtime.GOARCH == "arm64" {
 		baseAlpineArch = "aarch64"
-		alpineBaseImageHash = utils.MustDecodeHex("c94593729e4577650d9e73ada28e3cbe56964ab2a27240364f8616e920ed6d4e")
+		alpineBaseImageHash = utils.MustDecodeHex("dbd0c2eaa0bfa39e18d075dae07760a9055ffdee0a338c8a35059413b0f76fec")
 	}
 
 	baseImageURL = "https://dl-cdn.alpinelinux.org/alpine/v" + baseAlpineVersionMajor + "/releases/" + baseAlpineArch + "/alpine-virt-" + baseAlpineVersionCombined + "-" + baseAlpineArch + ".iso"
