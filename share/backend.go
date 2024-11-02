@@ -19,7 +19,7 @@ package share
 type NewBackendFunc func(uc *UserConfiguration) (Backend, *VMShareOptions, error)
 
 type Backend interface {
-	Apply(sharePWD string, vc *VMShareContext) (string, error)
+	Apply(sharePWD string, vc *VMShareContext) (shareURL string, fullURL string, err error)
 }
 
 var backends = map[string]NewBackendFunc{

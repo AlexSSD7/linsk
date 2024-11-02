@@ -63,15 +63,18 @@ func NewFTPBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 		}, nil
 }
 
-func (b *FTPBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) {
+func (b *FTPBackend) Apply(sharePWD string, vc *VMShareContext) (string, string, error) {
 	if vc.NetTapCtx != nil {
-		return "", fmt.Errorf("net taps are unsupported in ftp")
+		return "", "", fmt.Errorf("net taps are unsupported in ftp")
 	}
 
 	err := vc.FileManager.StartFTP(sharePWD, b.sharePort+1, b.passivePortCount, b.extIP)
 	if err != nil {
-		return "", errors.Wrap(err, "start ftp server")
+		return "", "", errors.Wrap(err, "start ftp server")
 	}
 
-	return "ftp://" + b.extIP.String() + ":" + fmt.Sprint(b.sharePort), nil
+	shareURL := "ftp://" + net.JoinHostPort(b.extIP.String(), fmt.Sprint(b.sharePort))
+	fullURL := "ftp://linsk:" + sharePWD + "@" + net.JoinHostPort(b.extIP.String(), fmt.Sprint(b.sharePort))
+
+	return shareURL, fullURL, nil
 }

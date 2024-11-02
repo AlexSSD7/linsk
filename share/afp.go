@@ -47,11 +47,14 @@ func NewAFPBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 		}, nil
 }
 
-func (b *AFPBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) {
+func (b *AFPBackend) Apply(sharePWD string, vc *VMShareContext) (string, string, error) {
 	err := vc.FileManager.StartAFP(sharePWD)
 	if err != nil {
-		return "", errors.Wrap(err, "start afp server")
+		return "", "", errors.Wrap(err, "start afp server")
 	}
 
-	return "afp://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(b.sharePort)) + "/linsk", nil
+	shareURL := "afp://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(b.sharePort)) + "/linsk"
+	fullURL := "afp://linsk:" + sharePWD + "@" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(b.sharePort)) + "/linsk"
+
+	return shareURL, fullURL, nil
 }
