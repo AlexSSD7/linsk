@@ -60,33 +60,38 @@ func NewSMBBackend(uc *UserConfiguration) (Backend, *VMShareOptions, error) {
 		}, nil
 }
 
-func (b *SMBBackend) Apply(sharePWD string, vc *VMShareContext) (string, error) {
+func (b *SMBBackend) Apply(sharePWD string, vc *VMShareContext) (string, string, error) {
 	if b.sharePort != nil && vc.NetTapCtx != nil {
-		return "", fmt.Errorf("conflict: configured to use a forwarded port but a net tap configuration was detected")
+		return "", "", fmt.Errorf("conflict: configured to use a forwarded port but a net tap configuration was detected")
 	}
 
 	if b.sharePort == nil && vc.NetTapCtx == nil {
-		return "", fmt.Errorf("no net tap configuration found")
+		return "", "", fmt.Errorf("no net tap configuration found")
 	}
 
 	err := vc.FileManager.StartSMB(sharePWD)
 	if err != nil {
-		return "", errors.Wrap(err, "start smb server")
+		return "", "", errors.Wrap(err, "start smb server")
 	}
 
 	var shareURL string
 	switch {
 	case b.sharePort != nil:
-		shareURL = "smb://linsk:" + sharePWD + "@" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(*b.sharePort)) + "/linsk"
+		shareURL = "smb://" + net.JoinHostPort(b.listenIP.String(), fmt.Sprint(*b.sharePort)) + "/linsk"
 	case vc.NetTapCtx != nil:
 		if osspecifics.IsWindows() {
 			shareURL = `\\` + strings.ReplaceAll(vc.NetTapCtx.Net.GuestIP.String(), ":", "-") + ".ipv6-literal.net" + `\linsk`
 		} else {
-			shareURL = "smb://linsk:" + sharePWD + "@" + net.JoinHostPort(vc.NetTapCtx.Net.GuestIP.String(), fmt.Sprint(smbPort)) + "/linsk"
+			shareURL = "smb://" + net.JoinHostPort(vc.NetTapCtx.Net.GuestIP.String(), fmt.Sprint(smbPort)) + "/linsk"
 		}
 	default:
-		return "", fmt.Errorf("no port forwarding and net tap configured")
+		return "", "", fmt.Errorf("no port forwarding and net tap configured")
 	}
 
-	return shareURL, nil
+	if osspecifics.IsWindows() {
+		return shareURL, "", nil // No full URL on Windows
+	}
+
+	fullURL := strings.Replace(shareURL, "smb://", "smb://linsk:"+sharePWD+"@", 1)
+	return shareURL, fullURL, nil
 }

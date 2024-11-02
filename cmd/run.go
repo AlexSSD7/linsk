@@ -101,7 +101,7 @@ var runCmd = &cobra.Command{
 
 			lg := slog.With("backend", shareBackendFlag)
 
-			shareURI, err := backend.Apply(sharePWD, &share.VMShareContext{
+			shareURL, fullURL, err := backend.Apply(sharePWD, &share.VMShareContext{
 				Instance:    i,
 				FileManager: fm,
 				NetTapCtx:   tapCtx,
@@ -113,7 +113,19 @@ var runCmd = &cobra.Command{
 
 			lg.Info("Started the network share successfully")
 
-			fmt.Fprintf(os.Stderr, "===========================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
+			fmt.Fprintf(os.Stderr, "===========================\n"+
+				"[Network File Share Config]\n"+
+				"The network file share was started. Please use the credentials below to connect to the file server.\n\n"+
+				"Type: %v\n"+
+				"URL: %v\n"+
+				"Username: linsk\n"+
+				"Password: %v\n", strings.ToUpper(shareBackendFlag), shareURL, sharePWD)
+
+			if fullURL != "" {
+				fmt.Fprintf(os.Stderr, "Full URL: %v\n", fullURL)
+			}
+
+			fmt.Fprintf(os.Stderr, "===========================\n")
 
 			ctxWait := true
 
